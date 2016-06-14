@@ -1,27 +1,31 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include "stack.h"
 
 struct Element
 {
-	int number;
+	void *number;
 	Element *next;
 };
 
 struct Stack
 {
+	int numberSize;
 	Element *first;
 };
 
-Stack* initialize()
+Stack* initialize(int numberSize)
 {
     Stack *stack = malloc(sizeof(*stack));
     stack->first = NULL;
+	stack->numberSize = numberSize;
 	return stack;
 }
 
 void deinitialize(Stack* stack)
 {
+	void *adress = NULL;
 	if (stack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -30,28 +34,32 @@ void deinitialize(Stack* stack)
     {
 		while(stack->first != NULL)
 		{
-			unstack(stack);
+			free(stackPop(stack,adress));
 		}
 	}
 	free(stack);
 }
 
-void toStack(Stack *stack, int newNumber)
+void stackPush(Stack *stack, void *newAdress)
 {
     Element *newNb = malloc(sizeof(*newNb));
     if (stack == NULL || newNb == NULL)
     {
         exit(EXIT_FAILURE);
     }
-    newNb->number = newNumber;
+	newNb->number = malloc(sizeof(stack->numberSize));
+	if (newNb->number == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+	memcpy(newNb->number,newAdress, stack->numberSize);
     newNb->next = stack->first;
     stack->first = newNb;
 }
 
-int unstack(Stack *stack)
+void* stackPop(Stack *stack, void* numberAdress)
 {
 	Element *stackElement;
-	int stackNumber = 0;
     if (stack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -61,14 +69,16 @@ int unstack(Stack *stack)
 
     if (stack != NULL && stack->first != NULL)
     {
-        stackNumber = stackElement->number;
+        numberAdress = stackElement->number;
         stack->first = stackElement->next;
+		/*free(stackElement->number);*/
         free(stackElement);
     }
-    return stackNumber;
+	printf(" AdresseNB : %d\n", *(int*)numberAdress);
+    return numberAdress;
 }
 
-void printStack(Stack *stack)
+void printStack(Stack *stack) /*INT PRINT FUNCTION*/
 {
 	Element* current;
     if (stack == NULL)
@@ -80,7 +90,7 @@ void printStack(Stack *stack)
 
     while (current != NULL)
     {
-        printf("%d\n", current->number);
+        printf("%d\n", *(int*)current->number);
         current = current->next;
     }
 
