@@ -3,18 +3,6 @@
 #include <stdlib.h>
 #include "stack.h"
 
-struct Element
-{
-	void *number;
-	Element *next;
-};
-
-struct Stack
-{
-	int numberSize;
-	Element *first;
-};
-
 Stack* initialize(int numberSize)
 {
     Stack *stack = malloc(sizeof(*stack));
@@ -47,7 +35,7 @@ void stackPush(Stack *stack, void *newAdress)
     {
         exit(EXIT_FAILURE);
     }
-	newNb->number = malloc(sizeof(stack->numberSize));
+	newNb->number = malloc(stack->numberSize);
 	if (newNb->number == NULL)
     {
         exit(EXIT_FAILURE);
@@ -60,21 +48,20 @@ void stackPush(Stack *stack, void *newAdress)
 void* stackPop(Stack *stack, void* numberAdress)
 {
 	Element *stackElement;
+	numberAdress = NULL;
     if (stack == NULL)
     {
         exit(EXIT_FAILURE);
     }
 
     stackElement = stack->first;
-
     if (stack != NULL && stack->first != NULL)
     {
         numberAdress = stackElement->number;
         stack->first = stackElement->next;
-		/*free(stackElement->number);*/
         free(stackElement);
     }
-	printf(" AdresseNB : %d\n", *(int*)numberAdress);
+	/*Don't forget to free numberAdress After*/
     return numberAdress;
 }
 
