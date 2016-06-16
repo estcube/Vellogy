@@ -3,11 +3,10 @@
 #include <stdlib.h>
 #include "stack.h"
 
-Stack* initialize(int numberSize)
+Stack* initialize()
 {
     Stack *stack = malloc(sizeof(*stack));
     stack->first = NULL;
-	stack->numberSize = numberSize;
 	return stack;
 }
 
@@ -28,19 +27,19 @@ void deinitialize(Stack* stack)
 	free(stack);
 }
 
-void stackPush(Stack *stack, void *newAdress)
+void stackPush(Stack *stack, void *newAdress, int numberSize)
 {
     Element *newNb = malloc(sizeof(*newNb));
     if (stack == NULL || newNb == NULL)
     {
         exit(EXIT_FAILURE);
     }
-	newNb->number = malloc(stack->numberSize);
+	newNb->number = malloc(numberSize);
 	if (newNb->number == NULL)
     {
         exit(EXIT_FAILURE);
     }
-	memcpy(newNb->number,newAdress, stack->numberSize);
+	memcpy(newNb->number,newAdress, numberSize);
     newNb->next = stack->first;
     stack->first = newNb;
 }
@@ -77,9 +76,9 @@ void printStack(Stack *stack) /*INT PRINT FUNCTION*/
 
     while (current != NULL)
     {
-        printf("%d\n", *(int*)current->number);
+        printf("	%d\n", *(int*)current->number);
         current = current->next;
     }
 
-    printf("\n");
+    /*printf("\n");*/
 }

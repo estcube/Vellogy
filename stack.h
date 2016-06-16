@@ -10,12 +10,11 @@
 
 	struct Stack
 	{
-		int numberSize;
 		Element *first;
 	};
-	Stack* initialize(int);
+	Stack* initialize();
 	void deinitialize(Stack*);
-    void stackPush(Stack*, void*);
+    void stackPush(Stack*, void*, int numberSize);
 	void* stackPop(Stack*,void*);
 	void printStack(Stack*);
 #endif
