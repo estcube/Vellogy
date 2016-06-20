@@ -10,6 +10,7 @@
 		int type;
 		int startTime;
 		int timeInterval;
+		int dataNumber;
 		Stack *dataStack;
 		IdElement *next;
 	};
@@ -22,10 +23,12 @@
 	IdStack* idInitialize();
 	void idDeinitialize(IdStack*);
 	IdElement* searchIdElement(IdStack*, int);
-    void idStackPush(IdStack*,int,int,int,int);
+    IdElement* idStackPush(IdStack*,int,int,int,int);
 	int firstIdStackPop(IdStack*);
 	int idStackPop(IdStack*,int);
 	void printIdStack(IdStack*);
-
+	int getStartTime(IdStack*);
+	int getTimeInterval(IdStack*);
 	IdElement* dataIdStackPush(IdStack*, int, void*);
+	void dataIdStackPop(IdStack*, int, int, int);
 #endif

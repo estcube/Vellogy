@@ -21,7 +21,7 @@ void deinitialize(Stack* stack)
     {
 		while(stack->first != NULL)
 		{
-			free(stackPop(stack,adress));
+			free(firstStackPop(stack));
 		}
 	}
 	free(stack);
@@ -44,10 +44,10 @@ void stackPush(Stack *stack, void *newAdress, int numberSize)
     stack->first = newNb;
 }
 
-void* stackPop(Stack *stack, void* numberAdress)
+void* firstStackPop(Stack *stack)
 {
 	Element *stackElement;
-	numberAdress = NULL;
+	void* numberAdress = NULL;
     if (stack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -62,6 +62,93 @@ void* stackPop(Stack *stack, void* numberAdress)
     }
 	/*Don't forget to free numberAdress After*/
     return numberAdress;
+}
+
+
+
+void stackPop(Stack* myStack, int type, int timeInterval, int finalTime, int stopTime, int i)
+{
+	int time = finalTime;
+	type = 0;
+	if (myStack == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+	Element *element = NULL;
+	Element *oldElement = NULL;
+	Element *firstElement = NULL;
+	if (myStack != NULL)
+    {
+		
+		element = myStack->first;
+		while (stopTime < time)
+		{
+			oldElement = element;
+			element = element->next;
+			time -= timeInterval;
+		}
+		firstElement = oldElement;
+		int j =0;
+		while (j<i)
+		{
+			oldElement = element;
+			element = element->next;
+			free(oldElement->number);
+			free(oldElement);
+			j++;
+		}
+			if (firstElement==NULL)
+				myStack->first = element;
+			else
+				firstElement->next=element;
+	}
+	return;
+}
+
+
+int stackNumberCount(Stack *myStack, int timeInterval, int finalTime,int startTime,int stopTime)
+{
+	int i =0;
+	int time = finalTime;
+	/*printf("FinalTime = %d\n",finalTime);*/
+	if (myStack == NULL)
+    {
+        exit(EXIT_FAILURE);
+    }
+	if(stopTime > finalTime || stopTime<startTime)
+	{
+		return -1;
+	}
+	Element *element;
+	if (myStack != NULL)
+    {
+		element = myStack->first;
+		while (stopTime < time)
+		{
+			if (element->next == NULL)
+			{
+				return -1;
+			}
+			element = element->next;
+			time -= timeInterval;
+		}
+		while (startTime <= time)
+		{
+			/*printf("Time = %d   I = %d\n",time,i);*/
+			i++;
+			if (element->next == NULL)
+			{
+				if (startTime >= time)
+				{
+					return i;
+				}
+				return -1;
+			}
+			time -= timeInterval;
+			element = element->next;
+		}
+	}
+	return i;
 }
 
 void printStack(Stack *stack) /*INT PRINT FUNCTION*/
