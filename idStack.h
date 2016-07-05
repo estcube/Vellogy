@@ -30,5 +30,5 @@
 	int getStartTime(IdStack*);
 	int getTimeInterval(IdStack*);
 	IdElement* dataIdStackPush(IdStack*, int, void*);
-	void dataIdStackPop(IdStack*, int, int, int);
+	void* dataIdStackPop(IdStack*, int, int, int);
 #endif

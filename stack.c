@@ -5,14 +5,13 @@
 
 Stack* initialize()
 {
-    Stack *stack = malloc(sizeof(*stack));
+    Stack *stack = (Stack*) malloc(sizeof(*stack));
     stack->first = NULL;
 	return stack;
 }
 
 void deinitialize(Stack* stack)
 {
-	void *adress = NULL;
 	if (stack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -29,7 +28,7 @@ void deinitialize(Stack* stack)
 
 void stackPush(Stack *stack, void *newAdress, int numberSize)
 {
-    Element *newNb = malloc(sizeof(*newNb));
+    Element *newNb = (Element*) malloc(sizeof(*newNb));
     if (stack == NULL || newNb == NULL)
     {
         exit(EXIT_FAILURE);
@@ -66,10 +65,12 @@ void* firstStackPop(Stack *stack)
 
 
 
-void stackPop(Stack* myStack, int type, int timeInterval, int finalTime, int stopTime, int i)
+void* stackPop(Stack* myStack, int type, int timeInterval, int finalTime, int stopTime, int i)
 {
 	int time = finalTime;
-	type = 0;
+	char *array, *array2;
+	array = malloc(i*type);
+	array2 = array+(i-1)*type;
 	if (myStack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -91,18 +92,21 @@ void stackPop(Stack* myStack, int type, int timeInterval, int finalTime, int sto
 		int j =0;
 		while (j<i)
 		{
+			memcpy(array2,element->number,type);
 			oldElement = element;
 			element = element->next;
 			free(oldElement->number);
 			free(oldElement);
 			j++;
+			array2 -= type;
 		}
 			if (firstElement==NULL)
 				myStack->first = element;
 			else
 				firstElement->next=element;
 	}
-	return;
+	/*Don't forget to free array Then*/
+	return array;
 }
 
 

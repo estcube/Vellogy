@@ -17,6 +17,6 @@
     void stackPush(Stack*, void*, int);
 	void* firstStackPop(Stack*);
 	int stackNumberCount(Stack*, int, int,int,int);
-	void stackPop(Stack*,int,int,int,int,int);
+	void* stackPop(Stack*,int,int,int,int,int);
 	void printStack(Stack*);
 #endif

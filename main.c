@@ -34,6 +34,7 @@ double cDouble = -0.00348979;
 double dDouble = 340000000000000000000000000000000000000.;
 double eDouble = -340000000000000000000000000000000000000.;
 double fDouble = 0;
+long double aLDouble = -0.00348979;
 
 void test_setup() {
 }
@@ -52,6 +53,7 @@ MU_TEST(test_initializeIdElements) {
     mu_check(idStackPush(myIdStack, 13,1,0,100)!=NULL);
     mu_check(idStackPush(myIdStack, 17,8,25000,1000)!=NULL);
     mu_check(idStackPush(myIdStack, 21,8,0,500)!=NULL);
+	mu_check(idStackPush(myIdStack, 48,10,0,500)!=NULL);
 }
 
 MU_TEST(test_pushTestInt) {
@@ -96,7 +98,9 @@ MU_TEST(test_pushTestDouble) {
 	mu_check(dataIdStackPush(myIdStack,21,&eDouble)!=NULL);
 	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == eDouble);
 	mu_check(dataIdStackPush(myIdStack,21,&fDouble)!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == fFloat);
+	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == fDouble);
+	mu_check(dataIdStackPush(myIdStack,48,&aLDouble)!=NULL);
+	mu_check(*(long double*)(searchIdElement(myIdStack,48)->dataStack->first->number) == aLDouble);
 }
 
 MU_TEST(test_pushTestChar) {
@@ -135,8 +139,16 @@ MU_TEST(test_idStackPop) {
 }
 
 MU_TEST(test_dataIdStackPop) {
-	dataIdStackPop(myIdStack, 1, 3000, 5000);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == cInt);
+	int* adress = NULL;
+	adress = dataIdStackPop(myIdStack, 1, 0000, 5000);
+	mu_check(adress[0] == aInt);
+	mu_check(adress[1] == bInt);
+	mu_check(adress[2] == cInt);
+	mu_check(adress[3] == dInt);
+	mu_check(adress[4] == eInt);
+	mu_check(adress[5] == fInt);
+	free(adress);
+
 }
 
 MU_TEST(test_deinitializeTest) {

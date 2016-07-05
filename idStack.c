@@ -5,7 +5,7 @@
 
 IdStack* idInitialize()
 {
-    IdStack *idStack = malloc(sizeof(*idStack));
+    IdStack *idStack = (IdStack*) malloc(sizeof(*idStack));
     idStack->first = NULL;
 	return idStack;
 }
@@ -38,7 +38,7 @@ IdElement* dataIdStackPush(IdStack* myIdStack, int id, void *newAdress)
 	return idElement;
 }
 
-void dataIdStackPop(IdStack* myIdStack, int id, int startTime, int stopTime)
+void* dataIdStackPop(IdStack* myIdStack, int id, int startTime, int stopTime)
 {
 	if (myIdStack == NULL)
     {
@@ -47,20 +47,18 @@ void dataIdStackPop(IdStack* myIdStack, int id, int startTime, int stopTime)
 	IdElement *idElement;
 	int finalTime = 0;
 	int i=0;
-	/*void* adress = NULL;*/
 	idElement = searchIdElement(myIdStack,id);
 	if (idElement != NULL)
 	{
-		/*printf("Data Number : %d\n",idElement->dataNumber);*/
 		finalTime = (idElement->startTime) + (idElement->dataNumber-1)*(idElement->timeInterval);
 		i = stackNumberCount(idElement->dataStack, idElement->timeInterval, finalTime,startTime,stopTime);
 		if (i > 0)
 		{
-			stackPop(idElement->dataStack, idElement->type,idElement->timeInterval, finalTime, stopTime,i);
+			idElement->dataNumber -= i;
+			return (stackPop(idElement->dataStack, idElement->type,idElement->timeInterval, finalTime, stopTime,i));
 		}
 	}
-	/*(idElement->dataNumber)--;*/
-	return/* adress*/;
+	return NULL;
 }
 
 IdElement* searchIdElement(IdStack *myIdStack, int id)
@@ -99,7 +97,7 @@ int getTimeInterval(IdStack *myIdStack)
 
 IdElement* idStackPush(IdStack *myIdStack, int newId, int newType,int newStartTime, int newTimeInterval)
 {
-    IdElement *idElement = malloc(sizeof(*idElement));
+    IdElement *idElement = (IdElement*) malloc(sizeof(*idElement));
     if (myIdStack == NULL || idElement == NULL)
     {
         exit(EXIT_FAILURE);
