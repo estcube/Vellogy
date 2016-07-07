@@ -65,9 +65,9 @@ void* firstStackPop(Stack *stack)
 
 
 
-void* stackPop(Stack* myStack, int type, int timeInterval, int finalTime, int stopTime, int i)
+void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int finalTime,unsigned int stopTime, int i)
 {
-	int time = finalTime;
+	unsigned int time = finalTime;
 	char *array, *array2;
 	array = malloc(i*type);
 	array2 = array+(i-1)*type;
@@ -110,10 +110,10 @@ void* stackPop(Stack* myStack, int type, int timeInterval, int finalTime, int st
 }
 
 
-int stackNumberCount(Stack *myStack, int timeInterval, int finalTime,int startTime,int stopTime)
+int stackNumberCount(Stack *myStack, unsigned int timeInterval, unsigned int finalTime,unsigned int startTime,unsigned int stopTime)
 {
 	int i =0;
-	int time = finalTime;
+	unsigned int time = finalTime;
 	/*printf("FinalTime = %d\n",finalTime);*/
 	if (myStack == NULL)
     {

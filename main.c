@@ -7,33 +7,13 @@
 IdStack* myIdStack;
 IdElement* idElement = NULL;
 int* intP;
-int aInt = 2;
-int bInt = -32503;
-int cInt = 2048;
-int dInt = 2147483647;
-int eInt = -2147483648;
-int fInt = 0;
+int aInt[6] = {2,-32503 ,2048,2147483647,-2147483648,0};
 float* floatP;
-float aFloat = 1.2354;
-float bFloat = -12365;
-float cFloat = -0.00348979;
-float dFloat = 340000000000000000000000000000000000000.;
-float eFloat = -340000000000000000000000000000000000000.;
-float fFloat = 0;
+float aFloat[6] = {1.2354,-12365,-0.00348979,340000000000000000000000000000000000000.,-340000000000000000000000000000000000000.,0};
 char* charP;
-char aChar = 'a';
-char bChar = 'b';
-char cChar = 'c';
-char dChar = 'Z';
-char eChar = 'z';
-char fChar = 'A';
+char aChar [6] = {'a','b','c','Z','z','A'};
 double* doubleP;
-double aDouble = 1.2354;
-double bDouble = -12365;
-double cDouble = -0.00348979;
-double dDouble = 340000000000000000000000000000000000000.;
-double eDouble = -340000000000000000000000000000000000000.;
-double fDouble = 0;
+double aDouble[6] =  {1.2354,-12365,-0.00348979,340000000000000000000000000000000000000.,-340000000000000000000000000000000000000.,0};
 long double aLDouble = -0.00348979;
 
 void test_setup() {
@@ -47,106 +27,76 @@ MU_TEST(test_initializeIdStack) {
 }
 
 MU_TEST(test_initializeIdElements) {
-	mu_check(idStackPush(myIdStack, 1,4,0,1000) != NULL);
-    mu_check(idStackPush(myIdStack, 5,4,200,50)!=NULL);
-    mu_check(idStackPush(myIdStack, 9,1,500,25)!=NULL);
-    mu_check(idStackPush(myIdStack, 13,1,0,100)!=NULL);
-    mu_check(idStackPush(myIdStack, 17,8,25000,1000)!=NULL);
-    mu_check(idStackPush(myIdStack, 21,8,0,500)!=NULL);
-	mu_check(idStackPush(myIdStack, 48,10,0,500)!=NULL);
+	mu_check(idStackPush(myIdStack, MCU_TEMP,TEMP,INT32_T,0,1000) != NULL);
+    mu_check(idStackPush(myIdStack, MCU_CURR,VOLTAGE,FLOAT,200,50)!=NULL);
+    mu_check(idStackPush(myIdStack, RTC,OTHER_TYPE,CHAR,500,25)!=NULL);
+    mu_check(idStackPush(myIdStack, RAM,OTHER_TYPE,CHAR,0,100)!=NULL);
+    mu_check(idStackPush(myIdStack, TEST1,OTHER_TYPE,DOUBLE,25000,1000)!=NULL);
+    mu_check(idStackPush(myIdStack, TEST2,OTHER_TYPE,DOUBLE,0,500)!=NULL);
+	mu_check(idStackPush(myIdStack, TEST3,OTHER_TYPE,LDOUBLE,0,500)!=NULL);
 }
 
 MU_TEST(test_pushTestInt) {
-	mu_check((dataIdStackPush(myIdStack,1,&aInt))!=NULL);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == aInt);
-	mu_check(dataIdStackPush(myIdStack,1,&bInt)!=NULL);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == bInt);
-	mu_check(dataIdStackPush(myIdStack,1,&cInt)!=NULL);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == cInt);
-	mu_check(dataIdStackPush(myIdStack,1,&dInt)!=NULL);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == dInt);
-	mu_check(dataIdStackPush(myIdStack,1,&eInt)!=NULL);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == eInt);
-	mu_check(dataIdStackPush(myIdStack,1,&fInt)!=NULL);
-	mu_check(*(int*)(searchIdElement(myIdStack,1)->dataStack->first->number) == fInt);
+	for(int i = 0; i<6; i++){
+		mu_check((dataIdStackPush(myIdStack,MCU_TEMP,&aInt[i]))!=NULL);
+		mu_check(*(int*)(searchIdElement(myIdStack,MCU_TEMP)->dataStack->first->number) == aInt[i]);
+	}
 }
+
 MU_TEST(test_pushTestFloat) {
-	mu_check((dataIdStackPush(myIdStack,5,&aFloat))!=NULL);
-	mu_check(*(float*)(searchIdElement(myIdStack,5)->dataStack->first->number) == aFloat);
-	mu_check(dataIdStackPush(myIdStack,5,&bFloat)!=NULL);
-	mu_check(*(float*)(searchIdElement(myIdStack,5)->dataStack->first->number) == bFloat);
-	mu_check(dataIdStackPush(myIdStack,5,&cFloat)!=NULL);
-	mu_check(*(float*)(searchIdElement(myIdStack,5)->dataStack->first->number) == cFloat);
-	mu_check(dataIdStackPush(myIdStack,5,&dFloat)!=NULL);
-	mu_check(*(float*)(searchIdElement(myIdStack,5)->dataStack->first->number) == dFloat);
-	mu_check(dataIdStackPush(myIdStack,5,&eFloat)!=NULL);
-	mu_check(*(float*)(searchIdElement(myIdStack,5)->dataStack->first->number) == eFloat);
-	mu_check(dataIdStackPush(myIdStack,5,&fFloat)!=NULL);
-	mu_check(*(float*)(searchIdElement(myIdStack,5)->dataStack->first->number) == fFloat);
+	for(int i = 0; i<6; i++){
+		mu_check((dataIdStackPush(myIdStack,MCU_CURR,&aFloat[i]))!=NULL);
+		mu_check(*(float*)(searchIdElement(myIdStack,MCU_CURR)->dataStack->first->number) == aFloat[i]);
+	}
 }
 
 
 MU_TEST(test_pushTestDouble) {
-	mu_check((dataIdStackPush(myIdStack,17,&aDouble))!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,17)->dataStack->first->number) == aDouble);
-	mu_check(dataIdStackPush(myIdStack,17,&bDouble)!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,17)->dataStack->first->number) == bDouble);
-	mu_check(dataIdStackPush(myIdStack,21,&cDouble)!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == cDouble);
-	mu_check(dataIdStackPush(myIdStack,21,&dDouble)!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == dDouble);
-	mu_check(dataIdStackPush(myIdStack,21,&eDouble)!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == eDouble);
-	mu_check(dataIdStackPush(myIdStack,21,&fDouble)!=NULL);
-	mu_check(*(double*)(searchIdElement(myIdStack,21)->dataStack->first->number) == fDouble);
-	mu_check(dataIdStackPush(myIdStack,48,&aLDouble)!=NULL);
-	mu_check(*(long double*)(searchIdElement(myIdStack,48)->dataStack->first->number) == aLDouble);
+	for(int i = 0; i<2; i++){
+		mu_check((dataIdStackPush(myIdStack,TEST1,&aDouble[i]))!=NULL);
+		mu_check(*(double*)(searchIdElement(myIdStack,TEST1)->dataStack->first->number) == aDouble[i]);
+	}
+	for(int i = 2; i<6; i++){
+		mu_check((dataIdStackPush(myIdStack,TEST2,&aDouble[i]))!=NULL);
+		mu_check(*(double*)(searchIdElement(myIdStack,TEST2)->dataStack->first->number) == aDouble[i]);
+	}
+	mu_check(dataIdStackPush(myIdStack,TEST3,&aLDouble)!=NULL);
+	mu_check(*(long double*)(searchIdElement(myIdStack,TEST3)->dataStack->first->number) == aLDouble);
 }
 
 MU_TEST(test_pushTestChar) {
-	mu_check((dataIdStackPush(myIdStack,9,&aChar))!=NULL);
-	mu_check(*(char*)(searchIdElement(myIdStack,9)->dataStack->first->number) == aChar);
-	mu_check(dataIdStackPush(myIdStack,9,&bChar)!=NULL);
-	mu_check(*(char*)(searchIdElement(myIdStack,9)->dataStack->first->number) == bChar);
-	mu_check(dataIdStackPush(myIdStack,13,&cChar)!=NULL);
-	mu_check(*(char*)(searchIdElement(myIdStack,13)->dataStack->first->number) == cChar);
-	mu_check(dataIdStackPush(myIdStack,13,&dChar)!=NULL);
-	mu_check(*(char*)(searchIdElement(myIdStack,13)->dataStack->first->number) == dChar);
-	mu_check(dataIdStackPush(myIdStack,13,&eChar)!=NULL);
-	mu_check(*(char*)(searchIdElement(myIdStack,13)->dataStack->first->number) == eChar);
-	mu_check(dataIdStackPush(myIdStack,13,&fChar)!=NULL);
-	mu_check(*(char*)(searchIdElement(myIdStack,13)->dataStack->first->number) == fChar);
+	for(int i = 0; i<6; i++){
+		mu_check((dataIdStackPush(myIdStack,RTC,&aChar[i]))!=NULL);
+		mu_check(*(char*)(searchIdElement(myIdStack,RTC)->dataStack->first->number) == aChar[i]);
+	}
 }
 
 MU_TEST(test_searchIdElement) {
-	mu_check(searchIdElement(myIdStack, 1) != NULL);
-	mu_check(searchIdElement(myIdStack, 5) != NULL);
-	mu_check(searchIdElement(myIdStack, 9) != NULL);
-	mu_check(searchIdElement(myIdStack, 13) != NULL);
-	mu_check(searchIdElement(myIdStack, 17) != NULL);
-	mu_check(searchIdElement(myIdStack, 21) != NULL);
-	mu_check(searchIdElement(myIdStack, 0) == NULL);
+	mu_check(searchIdElement(myIdStack, MCU_TEMP) != NULL);
+	mu_check(searchIdElement(myIdStack, MCU_CURR) != NULL);
+	mu_check(searchIdElement(myIdStack, RTC) != NULL);
+	mu_check(searchIdElement(myIdStack, RAM) != NULL);
+	mu_check(searchIdElement(myIdStack, TEST1) != NULL);
+	mu_check(searchIdElement(myIdStack, TEST2) != NULL);
+	mu_check(searchIdElement(myIdStack, TEST4) == NULL);
 	mu_check(searchIdElement(myIdStack, -1) == NULL);
 	mu_check(searchIdElement(myIdStack, 100) == NULL);
 }
 
 MU_TEST(test_idStackPop) {
-	mu_check(idStackPop(myIdStack, 0) == -1);
+	mu_check(idStackPop(myIdStack, TEST4) == -1);
 	mu_check(idStackPop(myIdStack, -1) == -1);
 	mu_check(idStackPop(myIdStack, -1) == -1);
-	mu_check(idStackPop(myIdStack, 17) == 0);
-	mu_check(searchIdElement(myIdStack, 17) == NULL);
+	mu_check(idStackPop(myIdStack, TEST1) == 0);
+	mu_check(searchIdElement(myIdStack, TEST1) == NULL);
 }
 
 MU_TEST(test_dataIdStackPop) {
 	int* adress = NULL;
 	adress = dataIdStackPop(myIdStack, 1, 0000, 5000);
-	mu_check(adress[0] == aInt);
-	mu_check(adress[1] == bInt);
-	mu_check(adress[2] == cInt);
-	mu_check(adress[3] == dInt);
-	mu_check(adress[4] == eInt);
-	mu_check(adress[5] == fInt);
+	for(int i = 0; i<6; i++){
+		mu_check(adress[i] == aInt[i]);
+	}
 	free(adress);
 
 }
@@ -177,6 +127,12 @@ MU_TEST_SUITE(test_suite) {
 	printIdStack(myIdStack);
 
 	MU_RUN_TEST(test_deinitializeTest);
+	printf("SizeShort = %ld\n",sizeof(unsigned short));
+	printf("Size enum = %ld\n",sizeof(Id_type));
+	printf("Size IdElement->Id_type = %ld\n",sizeof(Id_type)+sizeof(Data_type)+sizeof(Signal_type)+sizeof(unsigned int)+sizeof(unsigned short)+sizeof(unsigned int)+sizeof(Stack*)+sizeof(IdElement*));
+	printf("Size pointeur = %ld\n",sizeof(float*));
+	printf("Size IdElement = %ld\n",sizeof(IdElement));
+
 }
 
 int main()

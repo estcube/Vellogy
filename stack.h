@@ -16,7 +16,7 @@
 	void deinitialize(Stack*);
     void stackPush(Stack*, void*, int);
 	void* firstStackPop(Stack*);
-	int stackNumberCount(Stack*, int, int,int,int);
-	void* stackPop(Stack*,int,int,int,int,int);
+	int stackNumberCount(Stack*, unsigned int,unsigned int,unsigned int,unsigned int);
+	void* stackPop(Stack*,int,unsigned int,unsigned int,unsigned int,int);
 	void printStack(Stack*);
 #endif

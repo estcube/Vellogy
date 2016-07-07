@@ -26,27 +26,28 @@ void idDeinitialize(IdStack* myIdStack)
 	free(myIdStack);
 }
 
-IdElement* dataIdStackPush(IdStack* myIdStack, int id, void *newAdress)
+IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
 {
 	IdElement *idElement;
 	idElement = searchIdElement(myIdStack,id);
 	if (idElement != NULL)
 	{
-		stackPush(idElement->dataStack, newAdress, idElement->type);
+		stackPush(idElement->dataStack, newAdress, sizeDataType(idElement->dataType));
 	}
 	(idElement->dataNumber)++;
 	return idElement;
 }
 
-void* dataIdStackPop(IdStack* myIdStack, int id, int startTime, int stopTime)
+void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int startTime,unsigned int stopTime)
 {
+	IdElement *idElement;
+	unsigned int finalTime = 0;
+	int i=0;
 	if (myIdStack == NULL)
     {
         exit(EXIT_FAILURE);
     }
-	IdElement *idElement;
-	int finalTime = 0;
-	int i=0;
+
 	idElement = searchIdElement(myIdStack,id);
 	if (idElement != NULL)
 	{
@@ -55,13 +56,13 @@ void* dataIdStackPop(IdStack* myIdStack, int id, int startTime, int stopTime)
 		if (i > 0)
 		{
 			idElement->dataNumber -= i;
-			return (stackPop(idElement->dataStack, idElement->type,idElement->timeInterval, finalTime, stopTime,i));
+			return (stackPop(idElement->dataStack, sizeDataType(idElement->dataType),idElement->timeInterval, finalTime, stopTime,i));
 		}
 	}
 	return NULL;
 }
 
-IdElement* searchIdElement(IdStack *myIdStack, int id)
+IdElement* searchIdElement(IdStack *myIdStack, Id_type id)
 {
 	IdElement *stackElement = NULL;
 	if (myIdStack == NULL)
@@ -95,22 +96,56 @@ int getTimeInterval(IdStack *myIdStack)
 	return -1;
 }
 
-IdElement* idStackPush(IdStack *myIdStack, int newId, int newType,int newStartTime, int newTimeInterval)
+IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalType, Data_type newDataType,unsigned int newStartTime, unsigned int newTimeInterval)
 {
     IdElement *idElement = (IdElement*) malloc(sizeof(*idElement));
     if (myIdStack == NULL || idElement == NULL)
     {
         exit(EXIT_FAILURE);
     }
+	if (sizeDataType(newDataType) < 0)
+	{
+        exit(EXIT_FAILURE);
+    }
 	idElement->dataNumber=0;
     idElement->id = newId;
-    idElement->type = newType;
+	idElement->signalType = newSignalType;
+    idElement->dataType = newDataType;
     idElement->startTime = newStartTime;
     idElement->timeInterval = newTimeInterval;
     idElement->next = myIdStack->first;
     myIdStack->first = idElement;
 	idElement->dataStack = initialize();
 	return idElement;
+}
+
+int sizeDataType(Data_type dataType){
+	switch (dataType) {
+		case UINT8_T :
+		case INT8_T :
+		case CHAR :
+			return 1;
+	 	break;
+		case UINT16_T :
+		case INT16_T :
+			return 2;
+	 	break;
+		case UINT32_T :
+		case INT32_T :
+		case FLOAT :
+			return 4;
+	 	break;
+		case UINT64_T :
+		case INT64_T :
+		case DOUBLE :
+			return 8;
+	 	break;
+		case LDOUBLE :
+			return 10;
+	 	break;
+		default:
+			return -1; 
+	}
 }
 
 int firstIdStackPop(IdStack *myIdStack)
@@ -134,7 +169,7 @@ int firstIdStackPop(IdStack *myIdStack)
     return id;
 }
 
-int idStackPop(IdStack *myIdStack, int id)
+int idStackPop(IdStack *myIdStack, Id_type id)
 {
 	IdElement *stackElement = NULL;
 	IdElement *oldStackElement = NULL;
@@ -186,7 +221,7 @@ void printIdStack(IdStack *stack)
 
     while (current != NULL)
     {
-        printf("ID:%d Type:%d StartTime:%d TimeInterval:%d Number of Element : %d\n", current->id,current->type,current->startTime,current->timeInterval,current->dataNumber);
+        printf("ID:%d	SignalType:%d	TypeSize:%d	StartTime:%d	TimeInterval:%d		Number of Element : %d\n", current->id,current->signalType,sizeDataType(current->dataType),current->startTime,current->timeInterval,current->dataNumber);
 		/*printStack(current->dataStack);*/
         current = current->next;
     }
