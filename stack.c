@@ -1,7 +1,27 @@
+/**
+ * \file stack.c
+ * \brief stack Functions
+ * \author Quentin.C
+ * \version 0.5
+ * \date August 9th 2016
+ *
+ * Functions only used by idStack.c to manipulate Stacks
+ *
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include "stack.h"
+
+/**
+ * \fn Stack* initialize()
+ * \brief Function used to initialize a Stack instance.
+ *
+ * This function is used to initialise a Stack instance where will be stored Elements containning data.
+ *
+ * \return the initialized Stack instance.
+ */
 
 Stack* initialize()
 {
@@ -9,6 +29,15 @@ Stack* initialize()
     stack->first = NULL;
 	return stack;
 }
+
+/**
+ * \fn void deinitialize(Stack* stack)
+ * \brief Function used to deinitialize a Stack instance.
+ *
+ * This function is used to deinitialise a Stack instance.
+ *
+ * \param stack Stack instance which have to be deinitialized.
+ */
 
 void deinitialize(Stack* stack)
 {
@@ -26,6 +55,17 @@ void deinitialize(Stack* stack)
 	free(stack);
 }
 
+/**
+ * \fn void stackPush(Stack *stack, void *newAdress, int numberSize)
+ * \brief Function used to add and configure a new Element with it data into a Stack.
+ *
+ * This function have to be used after initialize().
+ *
+ * \param stack Stack instance in which an Element will be added.
+ * \param newAdress Pointer on the data we want to push into the Stack.
+ * \param numberSize int value of the size of data.
+ */
+
 void stackPush(Stack *stack, void *newAdress, int numberSize)
 {
     Element *newNb = (Element*) malloc(sizeof(*newNb));
@@ -42,6 +82,14 @@ void stackPush(Stack *stack, void *newAdress, int numberSize)
     newNb->next = stack->first;
     stack->first = newNb;
 }
+
+/**
+ * \fn void* firstStackPop(Stack *stack)
+ * \brief Function used to Pop the first Element.
+ *
+ * \param stack Stack instance we want to Pop the first Element.
+ * \return pointer to the data of the first Element.
+ */
 
 void* firstStackPop(Stack *stack)
 {
@@ -63,14 +111,26 @@ void* firstStackPop(Stack *stack)
     return numberAdress;
 }
 
+/**
+ * \fn void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int finalTime,unsigned int stopTime, int i)
+ * \brief Function used to pop Elements between two time values.
+ *
+ * \param myStack Stack instance in which Element(s) will be popped.
+ * \param type Size of a data value.
+ * \param timeInterval Time interval between each data value.
+ * \param finalTime time of the last data value.
+ * \param stopTime Last time of the wanted data value.
+ * \param dataNumber number of values corresponding to the wanted time.
+ * \return pointer to the first element of the data array.
+ */
 
-
-void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int finalTime,unsigned int stopTime, int i)
+void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int finalTime,unsigned int stopTime, int dataNumber)
 {
 	unsigned int time = finalTime;
 	char *array, *array2;
-	array = malloc(i*type);
-	array2 = array+(i-1)*type;
+	int j =0;
+	array = malloc(dataNumber*type);
+	array2 = array+(dataNumber-1)*type;
 	if (myStack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -89,8 +149,7 @@ void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int 
 			time -= timeInterval;
 		}
 		firstElement = oldElement;
-		int j =0;
-		while (j<i)
+		while (j<dataNumber)
 		{
 			memcpy(array2,element->number,type);
 			oldElement = element;
@@ -109,12 +168,22 @@ void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int 
 	return array;
 }
 
+/**
+ * \fn int stackNumberCount(Stack *myStack, unsigned int timeInterval, unsigned int finalTime,unsigned int startTime,unsigned int stopTime)
+ * \brief Function used to count the number of data satisfying the time condition.
+ *
+ * \param myStack Stack instance in which Element(s) will be analysed.
+ * \param timeInterval Time interval between each data value.
+ * \param finalTime time of the last data value.
+ * \param startTime unsigned int corresponding to the wanted starting time of data.
+ * \param stopTime unsigned int corresponding to the wanted stoping time of data.
+ * \return int value corresponding to the number of values satisfying the time conditions. -1 if none value corresponding or if the startTime is too low or the stopTime is too high.
+ */
 
 int stackNumberCount(Stack *myStack, unsigned int timeInterval, unsigned int finalTime,unsigned int startTime,unsigned int stopTime)
 {
 	int i =0;
 	unsigned int time = finalTime;
-	/*printf("FinalTime = %d\n",finalTime);*/
 	if (myStack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -138,7 +207,6 @@ int stackNumberCount(Stack *myStack, unsigned int timeInterval, unsigned int fin
 		}
 		while (startTime <= time)
 		{
-			/*printf("Time = %d   I = %d\n",time,i);*/
 			i++;
 			if (element->next == NULL)
 			{
@@ -155,7 +223,16 @@ int stackNumberCount(Stack *myStack, unsigned int timeInterval, unsigned int fin
 	return i;
 }
 
-void printStack(Stack *stack) /*INT PRINT FUNCTION*/
+/**
+ * \fn void printStack(Stack *stack)
+ * \brief Function used to print data in a Stack belonging to a idStack of specific datatype. (Here Float)
+ *
+ * Can be used in printIdStack(IdStack *idStack) but it's not working if there is not float data.
+ *
+ * \param stack Stack instance we want to print the float data.
+ */
+
+void printStack(Stack *stack) /*FLOAT PRINT FUNCTION*/
 {
 	Element* current;
     if (stack == NULL)
@@ -167,7 +244,7 @@ void printStack(Stack *stack) /*INT PRINT FUNCTION*/
 
     while (current != NULL)
     {
-        printf("	%d\n", *(int*)current->number);
+        printf("	%f\n", *(float*)current->number);
         current = current->next;
     }
 

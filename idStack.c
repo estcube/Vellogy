@@ -1,7 +1,27 @@
+/**
+ * \file idStack.c
+ * \brief IdStack Functions
+ * \author Quentin.C
+ * \version 0.5
+ * \date August 9th 2016
+ *
+ * Functions used to initialize, deinitialize, Push and Pop IdStacks and Stacks
+ *
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "idStack.h"
 #include "stack.h"
+
+/**
+ * \fn IdStack* idInitialize()
+ * \brief Function used to initialize a idStack instance.
+ *
+ * This function have to be used before everything else function to initialise an instance where will be stored IdElements
+ *
+ * \return the initialized idStack instance.
+ */
 
 IdStack* idInitialize()
 {
@@ -10,6 +30,14 @@ IdStack* idInitialize()
 	return idStack;
 }
 
+/**
+ * \fn void idDeinitialize(IdStack* myIdStack)
+ * \brief Function used to deinitialize a idStack instance.
+ *
+ * This function have to be used after everything else function to deinitialise an IdStack instance.
+ *
+ * \param myIdStack IdStack instance which have to be deinitialized.
+ */
 void idDeinitialize(IdStack* myIdStack)
 {
 	if (myIdStack == NULL)
@@ -26,6 +54,15 @@ void idDeinitialize(IdStack* myIdStack)
 	free(myIdStack);
 }
 
+/**
+ * \fn IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
+ * \brief Push a new data into the idElement corresponding to the id.
+ *
+ * \param myIdStack IdStack instance in which we want to search the IdElement where to put the new data.
+ * \param id Type of the ID we are looking for (defined in the Id_type enum).
+ * \return pointer to the idElement in which was pushed the new data.
+ */
+
 IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
 {
 	IdElement *idElement;
@@ -38,11 +75,22 @@ IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
 	return idElement;
 }
 
+/**
+ * \fn void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int startTime,unsigned int stopTime)
+ * \brief Push an array of data between the startTime and StopTime (included) corresponding to the id.
+ *
+ * \param myIdStack IdStack instance in which we want to search the IdElement to pop data from.
+ * \param id Type of the ID we are looking for (defined in the Id_type enum).
+ * \param startTime unsigned int corresponding to the wanted starting time of data.
+ * \param stopTime unsigned int corresponding to the wanted stoping time of data.
+ * \return pointer to the first element of the data array. NULL if the id doesn't exist or the startTime is too low or the stopTime is too high.
+ */
+
 void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int startTime,unsigned int stopTime)
 {
 	IdElement *idElement;
 	unsigned int finalTime = 0;
-	int i=0;
+	int dataNumber=0;
 	if (myIdStack == NULL)
     {
         exit(EXIT_FAILURE);
@@ -52,33 +100,52 @@ void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int startTime,unsig
 	if (idElement != NULL)
 	{
 		finalTime = (idElement->startTime) + (idElement->dataNumber-1)*(idElement->timeInterval);
-		i = stackNumberCount(idElement->dataStack, idElement->timeInterval, finalTime,startTime,stopTime);
-		if (i > 0)
+		dataNumber = stackNumberCount(idElement->dataStack, idElement->timeInterval, finalTime,startTime,stopTime);
+		if (dataNumber > 0)
 		{
-			idElement->dataNumber -= i;
-			return (stackPop(idElement->dataStack, sizeDataType(idElement->dataType),idElement->timeInterval, finalTime, stopTime,i));
+			idElement->dataNumber -= dataNumber;
+			return (stackPop(idElement->dataStack, sizeDataType(idElement->dataType),idElement->timeInterval, finalTime, stopTime,dataNumber));
 		}
 	}
 	return NULL;
 }
 
+/**
+ * \fn IdElement* searchIdElement(IdStack *myIdStack, Id_type id)
+ * \brief Search the pointer to the IdElement corresponding to the ID.
+ *
+ * \param myIdStack IdStack instance in which we want to search the IdElement.
+ * \param id Type of the ID we are looking for (defined in the Id_type enum).
+ * \return pointer to the idElement corresponding to the id. NULL if it doesn't exist.
+ */
+
+
 IdElement* searchIdElement(IdStack *myIdStack, Id_type id)
 {
-	IdElement *stackElement = NULL;
+	IdElement *idElement = NULL;
 	if (myIdStack == NULL)
     {
         exit(EXIT_FAILURE);
     }
-	stackElement = myIdStack->first;
+	idElement = myIdStack->first;
 	if (myIdStack != NULL && myIdStack->first != NULL)
     {
-		while(stackElement != NULL && stackElement->id != id)
+		while(idElement != NULL && idElement->id != id)
 		{
-			stackElement = stackElement ->next;
+			idElement = idElement ->next;
 		}
+		return idElement;
     }
-	return stackElement;
+	return NULL;
 }
+
+/**
+ * \fn int getStartTime(IdStack *myIdStack)
+ * \brief Return the start time of the first IdElement of the IdStack.
+ *
+ * \param myIdStack IdStack instance which we want the first IdElement start time.
+ * \return int value of the first IdElement start time. -1 if the instance doesn't exist.
+ */
 
 int getStartTime(IdStack *myIdStack)
 {
@@ -88,13 +155,37 @@ int getStartTime(IdStack *myIdStack)
 	return -1;
 }
 
+/**
+ * \fn int getTimeInterval(IdStack *myIdStack)
+ * \brief Return the time of the first IdElement of the IdStack.
+ *
+ * \param myIdStack IdStack instance which we want the first IdElement time interval.
+ * \return int value of the first IdElement time interval. -1 if the instance doesn't exist.
+ */
+
 int getTimeInterval(IdStack *myIdStack)
 {
 	if (myIdStack != NULL)
-		if (myIdStack != NULL)
+		if (myIdStack->first != NULL)
 			return (myIdStack->first->timeInterval);
 	return -1;
 }
+
+
+/**
+ * \fn IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalType, Data_type newDataType,unsigned int newStartTime, unsigned int newTimeInterval)
+ * \brief Function used to add and configure a new IdElement
+ *
+ * This function have to be used after idInitialize().
+ *
+ * \param myIdStack IdStack instance in which an IdElement will be added.
+ * \param newId Type of the new ID (defined in the enum Id_type).
+ * \param newSignalType Type of the new ID Signal (defined in the enum Signal_type).
+ * \param newDataType Type of the data (defined in the enum Data_type).
+ * \param newStartTime Start time of the data.
+ * \param newTimeInterval Time interval between each data value.
+ * \return pointer on the new IdElement.
+ */
 
 IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalType, Data_type newDataType,unsigned int newStartTime, unsigned int newTimeInterval)
 {
@@ -118,6 +209,14 @@ IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalTy
 	idElement->dataStack = initialize();
 	return idElement;
 }
+
+/**
+ * \fn int sizeDataType(Data_type dataType)
+ * \brief Return the size of the parameter dataType
+ *
+ * \param dataType Type of the data (defined in the enum Data_type).
+ * \return Size of the dataType. -1 if the dataType doesn't exist.
+ */
 
 int sizeDataType(Data_type dataType){
 	switch (dataType) {
@@ -148,26 +247,43 @@ int sizeDataType(Data_type dataType){
 	}
 }
 
+/**
+ * \fn int firstIdStackPop(IdStack *myIdStack)
+ * \brief Function used to Pop the first IdElement.
+ *
+ * \param myIdStack IdStack instance we want to Pop the first IdElement.
+ * \return Int value of the Popped ID.
+ */
+
 int firstIdStackPop(IdStack *myIdStack)
 {
-	IdElement *stackElement;
+	IdElement *idElement;
 	int id = -1;
     if (myIdStack == NULL)
     {
         exit(EXIT_FAILURE);
     }
 
-    stackElement = myIdStack->first;
+    idElement = myIdStack->first;
 
     if (myIdStack != NULL && myIdStack->first != NULL)
     {
-        id = stackElement->id;
-        myIdStack->first = stackElement->next;
-		deinitialize(stackElement->dataStack);
-        free(stackElement);
+        id = idElement->id;
+        myIdStack->first = idElement->next;
+		deinitialize(idElement->dataStack);
+        free(idElement);
     }
     return id;
 }
+
+/**
+ * \fn int idStackPop(IdStack *myIdStack, Id_type id)
+ * \brief Function used to Pop a IdElement corresponding to a specific ID.
+ *
+ * \param myIdStack IdStack instance we want to Pop a specific IdElement.
+ * \param id ID of the IdElement we want to Pop (defined in the enum Id_type)
+ * \return 0 if it SUCCESSED, -1 if it FAILED.
+ */
 
 int idStackPop(IdStack *myIdStack, Id_type id)
 {
@@ -207,15 +323,22 @@ int idStackPop(IdStack *myIdStack, Id_type id)
     return -1;
 }
 
-void printIdStack(IdStack *stack)
+/**
+ * \fn void printIdStack(IdStack *idStack)
+ * \brief Function used to print the state of the idStack.
+ *
+ * \param myIdStack IdStack instance we want to print the state.
+ */
+
+void printIdStack(IdStack *idStack)
 {
 	IdElement* current;
-    if (stack == NULL)
+    if (idStack == NULL)
     {
         exit(EXIT_FAILURE);
     }
     
-	current = stack->first;
+	current = idStack->first;
 
 	printf("\n");
 
