@@ -14,13 +14,27 @@
  *
  */
 
+
+
+/* HOW TO USE IT 
+
+1 - Initialize IdStack with idInitialize() Function.
+2 - Push as many IdElements as you want with idStackPush Function.
+3 - Push Data in a IdElement corresponding to the data type with dataIdStackPush Function.
+4 - Pop Data from an IdElement with dataIdStackPop Function.
+5 - You can delete an IdElement with idStackPop Funtion.
+6 - Deinitialize IdStack with idDeinitialize Function.
+*/
+
+
+
 	typedef struct IdElement IdElement;
 	typedef struct IdStack IdStack;
 /**
  * \enum Data_type
  * \brief Existing data types.
  *
- * Used to allocate the good memory size to store the data.
+ * Used to allocate the good size of memory to store the data.
  */
 	enum Data_type
 	{
@@ -50,7 +64,7 @@
 	typedef enum Id_type Id_type;
 /**
  * \struct IdElement
- * \brief Part of IdStack
+ * \brief Part of IdStack. Contain Stack
  *
  */
 	struct IdElement
@@ -66,7 +80,7 @@
 	};
 /**
  * \struct IdStack
- * \brief Contain IdElements
+ * \brief Contain IdElement
  *
  */
 	struct IdStack

@@ -4,12 +4,16 @@
 #include "idStack.h"
 #include "minunit.h"
 
+#include "kiss_fft.h"
+#include "kiss_fftr.h"
+#include "fft_freq.h"
+
 IdStack* myIdStack;
 IdElement* idElement = NULL;
 int* intP;
 int aInt[6] = {2,-32503 ,2048,2147483647,-2147483648,0};
 float* floatP;
-float aFloat[6] = {1.2354,-12365,-0.00348979,340000000000000000000000000000000000000.,-340000000000000000000000000000000000000.,0};
+float aFloat[6] = {1.2354,-2.6523,5.2,20.,0};
 char* charP;
 char aChar [6] = {'a','b','c','Z','z','A'};
 double* doubleP;
@@ -101,6 +105,22 @@ MU_TEST(test_dataIdStackPop) {
 
 }
 
+MU_TEST(test_fft) {
+
+	float* tab3;
+	float* tab4;
+	tab3 = dataIdStackPop(myIdStack, MCU_CURR, 200, 450);
+	tab4 = fftAll(tab3,6);
+	tab4 = ifftAll(tab4,6);
+	for (unsigned int i = 0; i<6; i++)
+		{
+			printf("%f\t%f\t%e\n",tab3[i],tab4[i] ,tab4[i] - tab3[i]);
+			mu_check(tab4[i] >= aFloat[i]-0.0001 && tab4[i] <= aFloat[i]+0.0001);
+		}
+	free(tab3);
+	free(tab4);
+}
+
 MU_TEST(test_deinitializeTest) {
 	idDeinitialize(myIdStack);
 }
@@ -125,13 +145,11 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test_dataIdStackPop);
 
 	printIdStack(myIdStack);
+	
+	MU_RUN_TEST(test_fft);
+
 
 	MU_RUN_TEST(test_deinitializeTest);
-	printf("SizeShort = %ld\n",sizeof(unsigned short));
-	printf("Size enum = %ld\n",sizeof(Id_type));
-	printf("Size IdElement->Id_type = %ld\n",sizeof(Id_type)+sizeof(Data_type)+sizeof(Signal_type)+sizeof(unsigned int)+sizeof(unsigned short)+sizeof(unsigned int)+sizeof(Stack*)+sizeof(IdElement*));
-	printf("Size pointeur = %ld\n",sizeof(float*));
-	printf("Size IdElement = %ld\n",sizeof(IdElement));
 
 }
 
@@ -139,5 +157,31 @@ int main()
 {
 	MU_RUN_SUITE(test_suite);
 	MU_REPORT();
+/*
+unsigned int size = 1;
+    float array[] = {1.2,2.4,3.0,2.3,1.0,0,1.3,3.0,4.,3.2,2.1,1.0,0.1,1.6,50.652,3.0,4.5,8.9,-20,2.3,9.0,1.2,-20,3.0,2.3,1.0,0,1.3,3.0,4.,3.2,2.1,1.0,0.1,1.6,3.0,4.5,8.9,10.,2.3,9.0,1.2,2.4,3.0,2.3,1.0,0,1.3,3.0,4.,3.2,2.1,1.0,0.1,1.6,3.0,4.5,8.9,10.,2.3,9.0,1.2,2.4,3.0,2.3,1.0,0,1.3,3.0,4.,3.2,2.1,1.0,0.1,1.6,3.0,4.5,8.9,10.,2.3,9.0};
+	float* tab;
+	float* tab2;
+
+	for (size = 20; size < 21 ; size++)
+	{
+		tab = fftHigh(array,size);
+		//TRANSMISSION
+		//TO TRANSMIT IN AN OTHER WAY : Size
+		tab = ifftHigh(tab,size);
+
+		tab2 = fftLow(array,size);
+		//TRANSMISSION
+		//TO TRANSMIT IN AN OTHER WAY : Size
+		tab2 = ifftLow(tab2,size);
+	printf("IN\tOUT_LOW\tOUT_HIGH BOTH DIFF (Size = %d)\n",size);
+		for (unsigned int i = 0; i<size; i++)
+		{
+			printf("%f\t%f\t%f\t%f\t%e\n",array[i],tab2[i],tab[i],tab2[i] + tab[i] ,tab2[i] + tab[i]-array[i]);
+		}
+	kiss_fft_cleanup();
+	free(tab);free(tab2);*/
+
+
 	return 0;
 }

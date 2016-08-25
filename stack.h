@@ -15,7 +15,7 @@
 	typedef struct Stack Stack;
 /**
  * \struct Element
- * \brief Contain data
+ * \brief Part of Stack. Contain data
  *
  */
 	struct Element
@@ -25,7 +25,7 @@
 	};
 /**
  * \struct Stack
- * \brief Contain Elements
+ * \brief Part of IdElement. Contain Element
  *
  */
 	struct Stack

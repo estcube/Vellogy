@@ -12,7 +12,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "idStack.h"
-#include "stack.h"
 
 /**
  * \fn IdStack* idInitialize()
@@ -60,6 +59,7 @@ void idDeinitialize(IdStack* myIdStack)
  *
  * \param myIdStack IdStack instance in which we want to search the IdElement where to put the new data.
  * \param id Type of the ID we are looking for (defined in the Id_type enum).
+ * \param newAdress Pointer on the data we want to push into the IdElement.
  * \return pointer to the idElement in which was pushed the new data.
  */
 
