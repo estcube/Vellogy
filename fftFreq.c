@@ -8,7 +8,7 @@
  *
  */
 
-#include "fft_freq.h"
+#include "fftFreq.h"
 #include "kiss_fft.h"
 #include "kiss_fftr.h"
 
@@ -32,6 +32,11 @@ float* fftLow(float* array,unsigned int size)
     int newSize = ((size+2)/2)+((size+2)/2)%2;
     float* newArray;
     newArray = (float*)malloc(newSize*sizeof(float));
+	if (newArray == NULL)
+	{
+		perror("Error : Memory allocation impossible for newArray\n");
+		return NULL;
+	}
     for(int i=0;i<newSize/2;i++)
     {
         newArray[i] = out_cpx[i].r;
@@ -68,6 +73,11 @@ float* fftHigh(float* array,unsigned int size)
     int stop = (size-1)/2+(size-1)%2+1;
     float *newArray;
     newArray = (float*)malloc(newSize*sizeof(float));
+	if (newArray == NULL)
+	{
+		perror("Error : Memory allocation impossible for newArray\n");
+		return NULL;
+	}
     int g =0;
     for(int i=stop-newSize/2;i<stop;i++)
     {
@@ -104,6 +114,11 @@ float* fftAll(float* array,unsigned int size)
 
     float* newArray;
     newArray = (float*)malloc((2*(size/2)+2)*sizeof(float));
+	if (newArray == NULL)
+	{
+		perror("Error : Memory allocation impossible for newArray\n");
+		return NULL;
+	}
     for(unsigned int i=0;i<size/2+1;i++)
     {
         newArray[i] = out_cpx[i].r;
@@ -114,7 +129,6 @@ float* fftAll(float* array,unsigned int size)
         newArray[i] = out_cpx[g].i;
         g++;
     }
-
     free(fft);
     free(cpx_buf);
     return newArray;
@@ -134,6 +148,11 @@ float* ifftLow(float* newArray,unsigned int size)
     //IFFT LOW FREQ
     float* dataOut;
     dataOut = (float*)malloc(size*sizeof(float));
+	if (dataOut == NULL)
+	{
+		perror("Error : Memory allocation impossible for dataOut\n");
+		return NULL;
+	}
     int isinverse = 1;
     kiss_fft_cpx out[size], new_out_cpx[size];
     kiss_fftr_cfg ifft = kiss_fftr_alloc(size*2,isinverse,0,0);
@@ -156,7 +175,7 @@ float* ifftLow(float* newArray,unsigned int size)
     {
         dataOut[i] = (out[i].r)/(size*2);
     }
-    free(newArray);
+    //free(newArray);
     free(ifft);
     return dataOut;
 }
@@ -175,6 +194,11 @@ float* ifftHigh(float* newArray,unsigned int size)
     //IFFT HIGH FREQ
     float* dataOut;
     dataOut = (float*)malloc(size*sizeof(float));
+	if (dataOut == NULL)
+	{
+		perror("Error : Memory allocation impossible for dataOut\n");
+		return NULL;
+	}
     int isinverse = 1;
     kiss_fft_cpx out[size], new_out_cpx[size];
     kiss_fftr_cfg ifft = kiss_fftr_alloc(size*2,isinverse,0,0);
@@ -197,7 +221,7 @@ float* ifftHigh(float* newArray,unsigned int size)
     {
         dataOut[i] = (out[i].r)/(size*2);
     }
-    free(newArray);
+    //free(newArray);
     free(ifft);
     return dataOut;
 }
@@ -216,6 +240,11 @@ float* ifftAll(float* newArray,unsigned int size)
     //IFFT ALL
     float* dataOut;
     dataOut = (float*)malloc(size*sizeof(float));
+	if (dataOut == NULL)
+	{
+		perror("Error : Memory allocation impossible for dataOut\n");
+		return NULL;
+	}
     int isinverse = 1;
     kiss_fft_cpx out[size], new_out_cpx[size];
     kiss_fftr_cfg ifft = kiss_fftr_alloc(size*2,isinverse,0,0);
@@ -234,7 +263,7 @@ float* ifftAll(float* newArray,unsigned int size)
     {
         dataOut[i] = (out[i].r)/(size*2);
     }
-    free(newArray);
+    //free(newArray);
     free(ifft);
     return dataOut;
 }

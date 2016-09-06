@@ -26,6 +26,11 @@
 Stack* initialize()
 {
     Stack *stack = (Stack*) malloc(sizeof(*stack));
+	if (stack == NULL)
+    {
+        perror("Error : Memory allocation for stack impossible");
+		return NULL;
+    }
     stack->first = NULL;
 	return stack;
 }
@@ -43,7 +48,8 @@ void deinitialize(Stack* stack)
 {
 	if (stack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Stack uninitialized");
+		return;
     }
 	else
     {
@@ -69,14 +75,21 @@ void deinitialize(Stack* stack)
 void stackPush(Stack *stack, void *newAdress, int numberSize)
 {
     Element *newNb = (Element*) malloc(sizeof(*newNb));
-    if (stack == NULL || newNb == NULL)
+	if (newNb == NULL)
+	{
+		perror("Error : Allocation of newNb Impossible");	
+		return;
+	}
+    if (stack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Stack uninitialized");
+		return;
     }
 	newNb->number = malloc(numberSize);
 	if (newNb->number == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Number pointer invalid");
+		return;
     }
 	memcpy(newNb->number,newAdress, numberSize);
     newNb->next = stack->first;
@@ -97,7 +110,8 @@ void* firstStackPop(Stack *stack)
 	void* numberAdress = NULL;
     if (stack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Stack uninitialized");
+		return NULL;
     }
 
     stackElement = stack->first;
@@ -130,10 +144,16 @@ void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int 
 	char *array, *array2;
 	int j =0;
 	array = malloc(dataNumber*type);
+	if (array == NULL)
+    {
+        perror("Error : Memory allocation for array impossible");
+		return NULL;
+    }
 	array2 = array+(dataNumber-1)*type;
 	if (myStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Stack uninitialized");
+		return NULL;
     }
 	Element *element = NULL;
 	Element *oldElement = NULL;
@@ -186,7 +206,8 @@ int stackNumberCount(Stack *myStack, unsigned int timeInterval, unsigned int fin
 	unsigned int time = finalTime;
 	if (myStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Stack uninitialized");
+		return -1;
     }
 	if(stopTime > finalTime || stopTime<startTime)
 	{
@@ -237,7 +258,8 @@ void printStack(Stack *stack) /*FLOAT PRINT FUNCTION*/
 	Element* current;
     if (stack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Stack uninitialized");
+		return;
     }
     
 	current = stack->first;

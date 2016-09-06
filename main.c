@@ -6,14 +6,15 @@
 
 #include "kiss_fft.h"
 #include "kiss_fftr.h"
-#include "fft_freq.h"
+#include "fftFreq.h"
+#include "fftStack.h"
 
 IdStack* myIdStack;
 IdElement* idElement = NULL;
 int* intP;
 int aInt[6] = {2,-32503 ,2048,2147483647,-2147483648,0};
 float* floatP;
-float aFloat[6] = {1.2354,-2.6523,5.2,20.,0};
+float aFloat[9] = {1.2354,-2.6523,5.2,20.,0.1,1.,5,3,2};
 char* charP;
 char aChar [6] = {'a','b','c','Z','z','A'};
 double* doubleP;
@@ -48,7 +49,19 @@ MU_TEST(test_pushTestInt) {
 }
 
 MU_TEST(test_pushTestFloat) {
-	for(int i = 0; i<6; i++){
+	for(int i = 0; i<9; i++){
+		mu_check((dataIdStackPush(myIdStack,MCU_CURR,&aFloat[i]))!=NULL);
+		mu_check(*(float*)(searchIdElement(myIdStack,MCU_CURR)->dataStack->first->number) == aFloat[i]);
+	}
+	for(int i = 0; i<9; i++){
+		mu_check((dataIdStackPush(myIdStack,MCU_CURR,&aFloat[i]))!=NULL);
+		mu_check(*(float*)(searchIdElement(myIdStack,MCU_CURR)->dataStack->first->number) == aFloat[i]);
+	}
+	for(int i = 0; i<9; i++){
+		mu_check((dataIdStackPush(myIdStack,MCU_CURR,&aFloat[i]))!=NULL);
+		mu_check(*(float*)(searchIdElement(myIdStack,MCU_CURR)->dataStack->first->number) == aFloat[i]);
+	}
+	for(int i = 0; i<9; i++){
 		mu_check((dataIdStackPush(myIdStack,MCU_CURR,&aFloat[i]))!=NULL);
 		mu_check(*(float*)(searchIdElement(myIdStack,MCU_CURR)->dataStack->first->number) == aFloat[i]);
 	}
@@ -97,7 +110,7 @@ MU_TEST(test_idStackPop) {
 
 MU_TEST(test_dataIdStackPop) {
 	int* adress = NULL;
-	adress = dataIdStackPop(myIdStack, 1, 0000, 5000);
+	adress = dataIdStackPop(myIdStack, MCU_TEMP, 5000);
 	for(int i = 0; i<6; i++){
 		mu_check(adress[i] == aInt[i]);
 	}
@@ -106,19 +119,20 @@ MU_TEST(test_dataIdStackPop) {
 }
 
 MU_TEST(test_fft) {
-
-	float* tab3;
-	float* tab4;
-	tab3 = dataIdStackPop(myIdStack, MCU_CURR, 200, 450);
-	tab4 = fftAll(tab3,6);
-	tab4 = ifftAll(tab4,6);
-	for (unsigned int i = 0; i<6; i++)
-		{
-			printf("%f\t%f\t%e\n",tab3[i],tab4[i] ,tab4[i] - tab3[i]);
-			mu_check(tab4[i] >= aFloat[i]-0.0001 && tab4[i] <= aFloat[i]+0.0001);
-		}
-	free(tab3);
-	free(tab4);
+	FftStack* myFftStack = fftInitialize();
+	initializeFftElement(myFftStack, MCU_CURR, 4);
+	fftPush(myFftStack,myIdStack, MCU_CURR,1300);
+	printFftStack(myFftStack);
+	ifft(fftPop(myFftStack, MCU_CURR,200,900,KEEP,ALL));
+	//fftPop(myFftStack, MCU_CURR,200,900,KEEP,LOW);
+	//printFftStack(myFftStack);
+	/*fftPush(myFftStack,myIdStack, MCU_CURR,1350);
+	printFftStack(myFftStack);
+	fftPush(myFftStack,myIdStack, MCU_CURR,1800);
+	printFftStack(myFftStack);*/
+	deinitializeFftElement(myFftStack, MCU_CURR);
+	fftDeinitialize(myFftStack);
+	//printFftStack(myFftStack);
 }
 
 MU_TEST(test_deinitializeTest) {
@@ -140,11 +154,11 @@ MU_TEST_SUITE(test_suite) {
 	MU_RUN_TEST(test_searchIdElement);
 	MU_RUN_TEST(test_idStackPop);
 
-	printIdStack(myIdStack);
+	//printIdStack(myIdStack);
 
 	MU_RUN_TEST(test_dataIdStackPop);
 
-	printIdStack(myIdStack);
+	//printIdStack(myIdStack);
 	
 	MU_RUN_TEST(test_fft);
 

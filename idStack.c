@@ -25,6 +25,11 @@
 IdStack* idInitialize()
 {
     IdStack *idStack = (IdStack*) malloc(sizeof(*idStack));
+	if (idStack == NULL)
+    {
+        perror("Error : Memory allocation for idStack impossible");
+		return NULL;
+    }
     idStack->first = NULL;
 	return idStack;
 }
@@ -41,7 +46,8 @@ void idDeinitialize(IdStack* myIdStack)
 {
 	if (myIdStack == NULL)
     {
-        exit(EXIT_FAILURE);
+		perror("Error : myIdStack uninitialized");
+        return;
     }
 	else
     {
@@ -77,33 +83,41 @@ IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
 
 /**
  * \fn void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int startTime,unsigned int stopTime)
- * \brief Push an array of data between the startTime and StopTime (included) corresponding to the id.
+ * \brief Push an array of data between the startTime of data and StopTime (included) corresponding to the id.
  *
  * \param myIdStack IdStack instance in which we want to search the IdElement to pop data from.
  * \param id Type of the ID we are looking for (defined in the Id_type enum).
- * \param startTime unsigned int corresponding to the wanted starting time of data.
- * \param stopTime unsigned int corresponding to the wanted stoping time of data.
- * \return pointer to the first element of the data array. NULL if the id doesn't exist or the startTime is too low or the stopTime is too high.
+
+ * \param stopTime unsigned int corresponding to the wanted stoping time of data (Must be higher than the startTime of data and lower than the biggest time value)
+ * \return pointer to the first element of the data array. NULL if the id doesn't exist or the stopTime is lower than startTime or higher than the highest time value.
  */
 
-void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int startTime,unsigned int stopTime)
+void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int stopTime)
 {
 	IdElement *idElement;
 	unsigned int finalTime = 0;
 	int dataNumber=0;
 	if (myIdStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : myIdStack uninitialized");
+		return NULL;
     }
 
 	idElement = searchIdElement(myIdStack,id);
 	if (idElement != NULL)
 	{
+		unsigned int startTime = idElement->startTime;
+		if (startTime != idElement->startTime && stopTime != idElement->startTime+idElement->timeInterval*idElement->dataNumber){
+			perror("startTime and stopTime can't be different from the extremals values at the same time");
+			return NULL;
+		}		
 		finalTime = (idElement->startTime) + (idElement->dataNumber-1)*(idElement->timeInterval);
 		dataNumber = stackNumberCount(idElement->dataStack, idElement->timeInterval, finalTime,startTime,stopTime);
 		if (dataNumber > 0)
 		{
 			idElement->dataNumber -= dataNumber;
+			if(startTime == idElement->startTime)
+				idElement->startTime = stopTime + idElement->timeInterval;
 			return (stackPop(idElement->dataStack, sizeDataType(idElement->dataType),idElement->timeInterval, finalTime, stopTime,dataNumber));
 		}
 	}
@@ -125,7 +139,8 @@ IdElement* searchIdElement(IdStack *myIdStack, Id_type id)
 	IdElement *idElement = NULL;
 	if (myIdStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : myIdStack uninitialized");
+		return NULL;
     }
 	idElement = myIdStack->first;
 	if (myIdStack != NULL && myIdStack->first != NULL)
@@ -190,13 +205,25 @@ int getTimeInterval(IdStack *myIdStack)
 IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalType, Data_type newDataType,unsigned int newStartTime, unsigned int newTimeInterval)
 {
     IdElement *idElement = (IdElement*) malloc(sizeof(*idElement));
-    if (myIdStack == NULL || idElement == NULL)
+	if (idElement == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : Memory allocation for idElement impossible");
+		return NULL;
     }
-	if (sizeDataType(newDataType) < 0)
+    if (myIdStack == NULL)
+    {
+        perror("Error : myIdStack uninitialized");
+		return NULL;
+    }
+	if (idElement == NULL)
+    {
+        perror("Error : idElement uninitialized");
+		return NULL;
+    }
+	if (sizeDataType(newDataType) <= 0)
 	{
-        exit(EXIT_FAILURE);
+        perror("Error : SizeDataType should be high than 0");
+		return NULL;
     }
 	idElement->dataNumber=0;
     idElement->id = newId;
@@ -261,7 +288,8 @@ int firstIdStackPop(IdStack *myIdStack)
 	int id = -1;
     if (myIdStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : myIdStack uninitialized");
+		return -1;
     }
 
     idElement = myIdStack->first;
@@ -291,7 +319,8 @@ int idStackPop(IdStack *myIdStack, Id_type id)
 	IdElement *oldStackElement = NULL;
     if (myIdStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : myIdStack uninitialized");
+		return -1;
     }
 
     stackElement = myIdStack->first;
@@ -335,17 +364,18 @@ void printIdStack(IdStack *idStack)
 	IdElement* current;
     if (idStack == NULL)
     {
-        exit(EXIT_FAILURE);
+        perror("Error : myIdStack uninitialized");
+		return;
     }
     
 	current = idStack->first;
 
-	printf("\n");
+	printf("\nUNCOMPRESSED ARCHITECTURE\n");
 
     while (current != NULL)
     {
         printf("ID:%d	SignalType:%d	TypeSize:%d	StartTime:%d	TimeInterval:%d		Number of Element : %d\n", current->id,current->signalType,sizeDataType(current->dataType),current->startTime,current->timeInterval,current->dataNumber);
-		/*printStack(current->dataStack);*/
+		//printStack(current->dataStack);
         current = current->next;
     }
 

@@ -99,5 +99,5 @@
 	int getStartTime(IdStack*);
 	int getTimeInterval(IdStack*);
 	IdElement* dataIdStackPush(IdStack*, Id_type, void*);
-	void* dataIdStackPop(IdStack*, Id_type,unsigned int,unsigned int);
+	void* dataIdStackPop(IdStack*, Id_type,unsigned int);
 #endif
