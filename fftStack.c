@@ -65,7 +65,7 @@ void fftDeinitialize(FftStack* myFftStack)
 
 /**
  * \fn FftElement* fftPush(FftStack* myFftStack, IdStack* myIdStack, Id_type id,unsigned int stopTime)
- * \brief Transform and transfer a selected array of data into the compressed data architecture.
+ * \brief Transform and transfer a selected array of float data into the compressed data architecture.
  *
  * \param myFftStack FftStack instance in which we want to store the compressed data.
  * \param id Type of the ID we are looking for (defined in the Id_type enum).
@@ -88,6 +88,11 @@ FftElement* fftPush(FftStack* myFftStack, IdStack* myIdStack, Id_type id,unsigne
 	if (idElement == NULL)
 	{
 		perror("Error : The Element corresponding to the ID is inexistant\n");
+		return NULL;
+	}
+	if (idElement->dataType != FLOAT)
+	{
+		perror("Error : Elements corresponding to the ID are not Floats\n");
 		return NULL;
 	}
 	unsigned int startTime = idElement->startTime;
