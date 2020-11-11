@@ -25,13 +25,13 @@
 IdStack* idInitialize()
 {
     IdStack *idStack = (IdStack*) malloc(sizeof(*idStack));
-	if (idStack == NULL)
+  if (idStack == NULL)
     {
         perror("Error : Memory allocation for idStack impossible");
-		return NULL;
+    return NULL;
     }
     idStack->first = NULL;
-	return idStack;
+  return idStack;
 }
 
 /**
@@ -44,19 +44,19 @@ IdStack* idInitialize()
  */
 void idDeinitialize(IdStack* myIdStack)
 {
-	if (myIdStack == NULL)
+  if (myIdStack == NULL)
     {
-		perror("Error : myIdStack uninitialized");
+    perror("Error : myIdStack uninitialized");
         return;
     }
-	else
+  else
     {
-		while(myIdStack->first != NULL)
-		{
-			firstIdStackPop(myIdStack);
-		}
-	}
-	free(myIdStack);
+    while(myIdStack->first != NULL)
+    {
+      firstIdStackPop(myIdStack);
+    }
+  }
+  free(myIdStack);
 }
 
 /**
@@ -71,14 +71,14 @@ void idDeinitialize(IdStack* myIdStack)
 
 IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
 {
-	IdElement *idElement;
-	idElement = searchIdElement(myIdStack,id);
-	if (idElement != NULL)
-	{
-		stackPush(idElement->dataStack, newAdress, sizeDataType(idElement->dataType));
-	}
-	(idElement->dataNumber)++;
-	return idElement;
+  IdElement *idElement;
+  idElement = searchIdElement(myIdStack,id);
+  if (idElement != NULL)
+  {
+    stackPush(idElement->dataStack, newAdress, sizeDataType(idElement->dataType));
+  }
+  (idElement->dataNumber)++;
+  return idElement;
 }
 
 /**
@@ -94,34 +94,34 @@ IdElement* dataIdStackPush(IdStack* myIdStack, Id_type id, void *newAdress)
 
 void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int stopTime)
 {
-	IdElement *idElement;
-	unsigned int finalTime = 0;
-	int dataNumber=0;
-	if (myIdStack == NULL)
+  IdElement *idElement;
+  unsigned int finalTime = 0;
+  int dataNumber=0;
+  if (myIdStack == NULL)
     {
         perror("Error : myIdStack uninitialized");
-		return NULL;
+    return NULL;
     }
 
-	idElement = searchIdElement(myIdStack,id);
-	if (idElement != NULL)
-	{
-		unsigned int startTime = idElement->startTime;
-		if (startTime != idElement->startTime && stopTime != idElement->startTime+idElement->timeInterval*idElement->dataNumber){
-			perror("startTime and stopTime can't be different from the extremals values at the same time");
-			return NULL;
-		}		
-		finalTime = (idElement->startTime) + (idElement->dataNumber-1)*(idElement->timeInterval);
-		dataNumber = stackNumberCount(idElement->dataStack, idElement->timeInterval, finalTime,startTime,stopTime);
-		if (dataNumber > 0)
-		{
-			idElement->dataNumber -= dataNumber;
-			if(startTime == idElement->startTime)
-				idElement->startTime = stopTime + idElement->timeInterval;
-			return (stackPop(idElement->dataStack, sizeDataType(idElement->dataType),idElement->timeInterval, finalTime, stopTime,dataNumber));
-		}
-	}
-	return NULL;
+  idElement = searchIdElement(myIdStack,id);
+  if (idElement != NULL)
+  {
+    unsigned int startTime = idElement->startTime;
+    if (startTime != idElement->startTime && stopTime != idElement->startTime+idElement->timeInterval*idElement->dataNumber){
+      perror("startTime and stopTime can't be different from the extremals values at the same time");
+      return NULL;
+    }
+    finalTime = (idElement->startTime) + (idElement->dataNumber-1)*(idElement->timeInterval);
+    dataNumber = stackNumberCount(idElement->dataStack, idElement->timeInterval, finalTime,startTime,stopTime);
+    if (dataNumber > 0)
+    {
+      idElement->dataNumber -= dataNumber;
+      if(startTime == idElement->startTime)
+        idElement->startTime = stopTime + idElement->timeInterval;
+      return (stackPop(idElement->dataStack, sizeDataType(idElement->dataType),idElement->timeInterval, finalTime, stopTime,dataNumber));
+    }
+  }
+  return NULL;
 }
 
 /**
@@ -136,22 +136,22 @@ void* dataIdStackPop(IdStack* myIdStack, Id_type id,unsigned int stopTime)
 
 IdElement* searchIdElement(IdStack *myIdStack, Id_type id)
 {
-	IdElement *idElement = NULL;
-	if (myIdStack == NULL)
+  IdElement *idElement = NULL;
+  if (myIdStack == NULL)
     {
         perror("Error : myIdStack uninitialized");
-		return NULL;
+    return NULL;
     }
-	idElement = myIdStack->first;
-	if (myIdStack != NULL && myIdStack->first != NULL)
+  idElement = myIdStack->first;
+  if (myIdStack != NULL && myIdStack->first != NULL)
     {
-		while(idElement != NULL && idElement->id != id)
-		{
-			idElement = idElement ->next;
-		}
-		return idElement;
+    while(idElement != NULL && idElement->id != id)
+    {
+      idElement = idElement ->next;
     }
-	return NULL;
+    return idElement;
+    }
+  return NULL;
 }
 
 /**
@@ -164,10 +164,10 @@ IdElement* searchIdElement(IdStack *myIdStack, Id_type id)
 
 int getStartTime(IdStack *myIdStack)
 {
-	if (myIdStack != NULL)
-		if (myIdStack != NULL)
-			return (myIdStack->first->startTime);
-	return -1;
+  if (myIdStack != NULL)
+    if (myIdStack != NULL)
+      return (myIdStack->first->startTime);
+  return -1;
 }
 
 /**
@@ -180,10 +180,10 @@ int getStartTime(IdStack *myIdStack)
 
 int getTimeInterval(IdStack *myIdStack)
 {
-	if (myIdStack != NULL)
-		if (myIdStack->first != NULL)
-			return (myIdStack->first->timeInterval);
-	return -1;
+  if (myIdStack != NULL)
+    if (myIdStack->first != NULL)
+      return (myIdStack->first->timeInterval);
+  return -1;
 }
 
 
@@ -205,36 +205,36 @@ int getTimeInterval(IdStack *myIdStack)
 IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalType, Data_type newDataType,unsigned int newStartTime, unsigned int newTimeInterval)
 {
     IdElement *idElement = (IdElement*) malloc(sizeof(*idElement));
-	if (idElement == NULL)
+  if (idElement == NULL)
     {
         perror("Error : Memory allocation for idElement impossible");
-		return NULL;
+    return NULL;
     }
     if (myIdStack == NULL)
     {
         perror("Error : myIdStack uninitialized");
-		return NULL;
+    return NULL;
     }
-	if (idElement == NULL)
+  if (idElement == NULL)
     {
         perror("Error : idElement uninitialized");
-		return NULL;
+    return NULL;
     }
-	if (sizeDataType(newDataType) <= 0)
-	{
+  if (sizeDataType(newDataType) <= 0)
+  {
         perror("Error : SizeDataType should be high than 0");
-		return NULL;
+    return NULL;
     }
-	idElement->dataNumber=0;
+  idElement->dataNumber=0;
     idElement->id = newId;
-	idElement->signalType = newSignalType;
+  idElement->signalType = newSignalType;
     idElement->dataType = newDataType;
     idElement->startTime = newStartTime;
     idElement->timeInterval = newTimeInterval;
     idElement->next = myIdStack->first;
     myIdStack->first = idElement;
-	idElement->dataStack = initialize();
-	return idElement;
+  idElement->dataStack = initialize();
+  return idElement;
 }
 
 /**
@@ -246,32 +246,32 @@ IdElement* idStackPush(IdStack *myIdStack, Id_type newId,Signal_type newSignalTy
  */
 
 int sizeDataType(Data_type dataType){
-	switch (dataType) {
-		case UINT8_T :
-		case INT8_T :
-		case CHAR :
-			return 1;
-	 	break;
-		case UINT16_T :
-		case INT16_T :
-			return 2;
-	 	break;
-		case UINT32_T :
-		case INT32_T :
-		case FLOAT :
-			return 4;
-	 	break;
-		case UINT64_T :
-		case INT64_T :
-		case DOUBLE :
-			return 8;
-	 	break;
-		case LDOUBLE :
-			return 10;
-	 	break;
-		default:
-			return -1; 
-	}
+  switch (dataType) {
+    case UINT8_T :
+    case INT8_T :
+    case CHAR :
+      return 1;
+     break;
+    case UINT16_T :
+    case INT16_T :
+      return 2;
+     break;
+    case UINT32_T :
+    case INT32_T :
+    case FLOAT :
+      return 4;
+     break;
+    case UINT64_T :
+    case INT64_T :
+    case DOUBLE :
+      return 8;
+     break;
+    case LDOUBLE :
+      return 10;
+     break;
+    default:
+      return -1;
+  }
 }
 
 /**
@@ -284,12 +284,12 @@ int sizeDataType(Data_type dataType){
 
 int firstIdStackPop(IdStack *myIdStack)
 {
-	IdElement *idElement;
-	int id = -1;
+  IdElement *idElement;
+  int id = -1;
     if (myIdStack == NULL)
     {
         perror("Error : myIdStack uninitialized");
-		return -1;
+    return -1;
     }
 
     idElement = myIdStack->first;
@@ -298,7 +298,7 @@ int firstIdStackPop(IdStack *myIdStack)
     {
         id = idElement->id;
         myIdStack->first = idElement->next;
-		deinitialize(idElement->dataStack);
+    deinitialize(idElement->dataStack);
         free(idElement);
     }
     return id;
@@ -315,39 +315,39 @@ int firstIdStackPop(IdStack *myIdStack)
 
 int idStackPop(IdStack *myIdStack, Id_type id)
 {
-	IdElement *stackElement = NULL;
-	IdElement *oldStackElement = NULL;
+  IdElement *stackElement = NULL;
+  IdElement *oldStackElement = NULL;
     if (myIdStack == NULL)
     {
         perror("Error : myIdStack uninitialized");
-		return -1;
+    return -1;
     }
 
     stackElement = myIdStack->first;
 
     if (myIdStack != NULL && myIdStack->first != NULL)
     {
-		while(stackElement != NULL && stackElement->id != id)
-		{
-			oldStackElement = stackElement;
-			stackElement = stackElement ->next;
-		}
-		if(stackElement != NULL)
-		{
-			if (oldStackElement == NULL)
-			{
-				
-				myIdStack->first = stackElement->next;
-			}
-			else
-			{
-				oldStackElement->next = stackElement->next;
-			}
-			deinitialize(stackElement->dataStack);
-			free(stackElement);
-			return 0;
-		}
-        
+    while(stackElement != NULL && stackElement->id != id)
+    {
+      oldStackElement = stackElement;
+      stackElement = stackElement ->next;
+    }
+    if(stackElement != NULL)
+    {
+      if (oldStackElement == NULL)
+      {
+
+        myIdStack->first = stackElement->next;
+      }
+      else
+      {
+        oldStackElement->next = stackElement->next;
+      }
+      deinitialize(stackElement->dataStack);
+      free(stackElement);
+      return 0;
+    }
+
     }
     return -1;
 }
@@ -361,24 +361,23 @@ int idStackPop(IdStack *myIdStack, Id_type id)
 
 void printIdStack(IdStack *idStack)
 {
-	IdElement* current;
+  IdElement* current;
     if (idStack == NULL)
     {
         perror("Error : myIdStack uninitialized");
-		return;
+    return;
     }
-    
-	current = idStack->first;
 
-	printf("\nUNCOMPRESSED ARCHITECTURE\n");
+  current = idStack->first;
+
+  printf("\nUNCOMPRESSED ARCHITECTURE\n");
 
     while (current != NULL)
     {
-        printf("ID:%d	SignalType:%d	TypeSize:%d	StartTime:%d	TimeInterval:%d		Number of Element : %d\n", current->id,current->signalType,sizeDataType(current->dataType),current->startTime,current->timeInterval,current->dataNumber);
-		//printStack(current->dataStack);
+        printf("ID:%d  SignalType:%d  TypeSize:%d  StartTime:%d  TimeInterval:%d    Number of Element : %d\n", current->id,current->signalType,sizeDataType(current->dataType),current->startTime,current->timeInterval,current->dataNumber);
+    //printStack(current->dataStack);
         current = current->next;
     }
 
     printf("\n");
 }
-

@@ -77,7 +77,7 @@ void stackPush(Stack *stack, void *newAdress, int numberSize)
     Element *newNb = (Element*) malloc(sizeof(*newNb));
 	if (newNb == NULL)
 	{
-		perror("Error : Allocation of newNb Impossible");	
+		perror("Error : Allocation of newNb Impossible");
 		return;
 	}
     if (stack == NULL)
@@ -160,7 +160,7 @@ void* stackPop(Stack* myStack, int type, unsigned int timeInterval,unsigned int 
 	Element *firstElement = NULL;
 	if (myStack != NULL)
     {
-		
+
 		element = myStack->first;
 		while (stopTime < time)
 		{
@@ -261,7 +261,7 @@ void printStack(Stack *stack) /*FLOAT PRINT FUNCTION*/
         perror("Error : Stack uninitialized");
 		return;
     }
-    
+
 	current = stack->first;
 
     while (current != NULL)

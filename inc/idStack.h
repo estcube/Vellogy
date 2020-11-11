@@ -16,7 +16,7 @@
 
 
 
-/* HOW TO USE IT 
+/* HOW TO USE IT
 
 1 - Initialize IdStack with idInitialize() Function.
 2 - Push as many IdElements as you want with idStackPush Function.

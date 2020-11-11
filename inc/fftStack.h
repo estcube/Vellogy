@@ -14,7 +14,7 @@
  *
  */
 
-/* HOW TO USE IT 
+/* HOW TO USE IT
 
 1 - Initialize FftStack with fftInitialize() Function.
 2 - Initialize FftElement with initializeFftElement(...) Function.
@@ -76,7 +76,7 @@
 	{
 		Id_type id;
 		unsigned int startTime; //4
-		unsigned int blocSize; //4 Very important parameter ... 
+		unsigned int blocSize; //4 Very important parameter ...
 		unsigned int sizeCompressedH; //4
 		unsigned int sizeCompressedL; //4
 		unsigned int timeInterval; //4
