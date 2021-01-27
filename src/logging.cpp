@@ -79,11 +79,14 @@ void Log<T,U>::write_to_queue(auto var_address, uint8_t len) {
 
     uint32_t remaining_bytes = QUEUE_SIZE - this->queue_len;
     if (len > remaining_bytes) {
-        memcpy(this->data_queue, var_address, remaining_bytes);
+        memcpy(this->data_queue + this->queue_len, var_address, remaining_bytes);
         this->switch_buffers();
-        memcpy(this->data_queue, var_address, len - remaining_bytes);
+        uint8_t* newaddr = (uint8_t *)var_address + remaining_bytes;
+        memcpy(this->data_queue, newaddr, len - remaining_bytes);
+        this->queue_len = len - remaining_bytes;
     } else {
-        memcpy(this->data_queue, var_address, len);
+        memcpy(this->data_queue + this->queue_len, var_address, len);
+        this->queue_len += len;
     }
 }
 
@@ -134,12 +137,12 @@ void Log<T,U>::write_to_memory() {
 template <class T, class U>
 void Log<T,U>::switch_buffers() {
     // Switch data queue and double buffer
-    uint8_t* temp = data_queue;
-    data_queue = double_buffer;
-    double_buffer = temp;
+    uint8_t* temp = this->data_queue;
+    this->data_queue = this->double_buffer;
+    this->double_buffer = temp;
 
     // Reset queue length to 0
-    queue_len = 0;
+    this->queue_len = 0;
 
     // Write data to memory
     write_to_memory();
