@@ -1,48 +1,79 @@
-# Usage: python3 logdecoder.py path_to_binary_file size_of_T_in_bytes size_of_U_in_bytes size_of_TS_in_bytes
+# Usage: python3 logdecoder.py path_to_binary_file T_format_string U_format_string TS_format_string
+# Nt python3 data_logging/dev/logdecoder.py dump.bin I B Q
 
 # Flush nõuaks suhtlust maa ja logimise vahel
 
 import sys
 import struct
 
-T_size = 0
-U_size = 0
-TS_size = 0
+c_types = {
+    "int8_t" : "b",
+    "uint8_t" : "B",
+    "int16_t" : "h",
+    "uint16_t" : "H",
+    "int32_t" : "i",
+    "uint32_t" : "I",
+    "float" : "f",
+    "double" : "d"
+}
+
+c_type_sizes = {
+    "int8_t" : 1,
+    "uint8_t" : 1,
+    "int16_t" : 2,
+    "uint16_t" : 2,
+    "int32_t" : 4,
+    "uint32_t" : 4,
+    "float" : 4,
+    "double" : 8
+}
+
+T_format = ""
+U_format = ""
+TS_format = ""
 
 log_bytes = []
-decoder_position = 0
 
 deltas = []
 data = []
 
+
+def log_decode(buffer, T_format, U_format, TS_format):
+    offset = len(buffer)
+    data = []
+    timestamps = []
+
+    while offset > 0:
+        formatstring = "<"
+
+        offset -= struct.calcsize(U_format)
+        data_added = struct.unpack_from("<" + U_format, buffer, offset)[0] + 1
+
+        formatstring += TS_format
+        for i in range(data_added):
+            formatstring += T_format
+            formatstring += U_format
+
+        offset -= (struct.calcsize(U_format) + struct.calcsize(T_format)) * data_added + struct.calcsize(TS_format)
+        entry = struct.unpack_from(formatstring, buffer, offset)
+
+        timestamp = entry[0]
+        for i in range(data_added * 2, 0, -2):
+            timestamps.append(entry[i] + timestamp)
+            data.append(entry[i - 1])
+
+    return data[::-1], timestamps[::-1]
+
+
 if __name__ == "__main__":
-    T_size = int(sys.argv[2])
-    U_size = int(sys.argv[3])  # NB! U_size can't be 0
-    TS_size = int(sys.argv[4])
+    T_format = sys.argv[2]
+    U_format = sys.argv[3]  # NB! U_size can't be 0
+    TS_format = sys.argv[4]
 
     # Read bytes from input binary file
     with open(sys.argv[1], "rb") as infile:
-        log_bytes = bytes(infile.read())[::-1]
+        log_bytes = bytes(infile.read())
 
-    while decoder_position < len(log_bytes):
-        data_added = int.from_bytes(log_bytes[decoder_position:decoder_position+U_size], byteorder="big", signed=False) + 1
-        decoder_position += U_size
-
-        for i in range(data_added):
-            delta = int.from_bytes(log_bytes[decoder_position:decoder_position+U_size], byteorder="big", signed=False)
-            decoder_position += U_size
-            datapoint = int.from_bytes(log_bytes[decoder_position:decoder_position+T_size], byteorder="big", signed=False)
-            decoder_position += T_size
-
-            deltas.append(delta)
-            data.append(datapoint)
-
-        timestamp = int.from_bytes(log_bytes[decoder_position:decoder_position+TS_size], byteorder="big", signed=False)
-        decoder_position += TS_size
-
-        for i in range(data_added):
-            deltas[- 1 - i] += timestamp
-
-    # For debug purposes
-    print(deltas[::-1])
-    print(data[::-1])
+    data, deltas = log_decode(log_bytes, T_format, U_format, TS_format)
+    print(data)
+    print(deltas)
