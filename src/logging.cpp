@@ -10,35 +10,38 @@
 
 template <class T, class U>
 Log<T,U>::Log() {
-    data_queue = (uint8_t *)malloc(QUEUE_SIZE);
-    double_buffer = (uint8_t *)malloc(QUEUE_SIZE);
+    this->data_queue = (uint8_t *)malloc(QUEUE_SIZE);
+    this->double_buffer = (uint8_t *)malloc(QUEUE_SIZE);
 
-    init_memory();
+    this->init_file();
 }
 
 template <class T, class U>
 void Log<T,U>::log(T* data, time_t timestamp) {
     bool new_entry = false;
 
-    if (!last_timestamp || timestamp - last_timestamp >= (1 << (sizeof(U) * BYTE_SIZE))) {
+    if (!this->last_timestamp || this->flushed || timestamp - this->last_timestamp >= (1 << (sizeof(U) * BYTE_SIZE))) {
         // If one timestamp resolution is full, write to queue how many datapoints were recorded under the previous timestamp
-        if (last_timestamp) {
-            write_to_queue(&data_added, sizeof(U));
+        if (this->last_timestamp && !(this->flushed)) {
+            write_to_queue(&(this->data_added), sizeof(U));
         }
         // Create a new timestamp and write it to queue
-        last_timestamp = timestamp;
-        write_to_queue(&last_timestamp, sizeof(last_timestamp));
-        data_added = 0;
+        this->last_timestamp = timestamp;
+        write_to_queue(&(this->last_timestamp), sizeof(this->last_timestamp));
+        this->data_added = 0;
 
         // This is a new entry with a new timestamp
         new_entry = true;
+
+        // Log is no longer in flushed state
+        this->flushed = false;
     }
 
     // Write datapoint to queue
-    write_to_queue(data, sizeof(T));
+    this->write_to_queue(data, sizeof(T));
     // TODO: change data type
-    uint32_t time_diff = timestamp - last_timestamp;
-    write_to_queue(&time_diff, sizeof(U));
+    uint32_t time_diff = timestamp - this->last_timestamp;
+    this->write_to_queue(&time_diff, sizeof(U));
 
     // The maximum number of datapoints under one timestamp is equal to maximum number of different deltas, 2^(size of U in bits)
     // To save memory, the number of datapoints written to the end of the entry is one less than there actually are
@@ -50,48 +53,34 @@ void Log<T,U>::log(T* data, time_t timestamp) {
         return;
     }
 
-    data_added++;
+    this->data_added++;
 }
 
-// TODO: Auto pointer/reference?
 template <class T, class U>
 void Log<T,U>::write_to_queue(auto var_address, uint8_t len) {
-    /*
-    for (uint8_t i = 0; i < len; i++) {
-        data_queue[queue_len] = *((uint8_t&)var_address + i);
-        queue_len++;
-
-        // If data queue is full
-        if (queue_len >= QUEUE_SIZE) {
-            // Switch data queue and double buffer
-            uint8_t* temp = data_queue;
-            data_queue = double_buffer;
-            double_buffer = temp;
-
-            // Reset queue length to 0
-            queue_len = 0;
-
-            // Write data to memory
-            write_to_memory();
-        }
-    }
-    */
-
+    // How many bytes of room is there left in the data queue
     uint32_t remaining_bytes = QUEUE_SIZE - this->queue_len;
+
+    // If a buffer switch is needed halfway through the write
     if (len > remaining_bytes) {
+        // Write as many bytes as possible to the current buffer
         memcpy(this->data_queue + this->queue_len, var_address, remaining_bytes);
+        this->queue_len += remaining_bytes;
+
+        // Switch buffers
         this->switch_buffers();
-        uint8_t* newaddr = (uint8_t *)var_address + remaining_bytes;
-        memcpy(this->data_queue, newaddr, len - remaining_bytes);
-        this->queue_len = len - remaining_bytes;
-    } else {
+
+        // Write remaining bytes to the new (switched) buffer
+        memcpy(this->data_queue, (uint8_t *)var_address + remaining_bytes, len - remaining_bytes);
+        this->queue_len += len - remaining_bytes;
+    } else { // If all bytes can be written to current buffer
         memcpy(this->data_queue + this->queue_len, var_address, len);
         this->queue_len += len;
     }
 }
 
 template <class T, class U>
-void Log<T,U>::init_memory() {
+void Log<T,U>::init_file() {
     hal_errors_t hal_error = HAL_OK;
     mt25ql_errors_t mt_error = MT25QL_OK;
 
@@ -122,12 +111,9 @@ void Log<T,U>::init_memory() {
 }
 
 template <class T, class U>
-void Log<T,U>::write_to_memory() {
+void Log<T,U>::write_to_file(uint32_t size) {
     mt25ql_errors_t mt_error = MT25QL_OK;
-    // mt_error = mt25ql_unlock_sectors();
-
-    // TODO: memory logic? How many sectors have been filled by logs, on which addresses etc
-    mt_error = mt25ql_program(double_buffer, 0x0000F000, QUEUE_SIZE);
+    mt_error = mt25ql_program(this->double_buffer, 0x0000F000, size);
 
     // Debug purposes
     uint8_t read_queue[4096] = {};
@@ -141,9 +127,17 @@ void Log<T,U>::switch_buffers() {
     this->data_queue = this->double_buffer;
     this->double_buffer = temp;
 
+    // Write data to file
+    // this->write_to_file(this->queue_len);
+
     // Reset queue length to 0
     this->queue_len = 0;
+}
 
-    // Write data to memory
-    write_to_memory();
+template <class T, class U>
+void Log<T,U>::flush_buffer() {
+    this->write_to_queue(&(this->data_added), sizeof(U));
+    this->flushed = true;
+
+    this->switch_buffers();
 }

@@ -8,13 +8,13 @@
 #include <time.h>
 #include <stdint.h>
 
-// TODO: use this keyword
 // TODO: use references
+// TODO: mis juhtub, kui entry saab täis, aga resolution pole veel täis? Kas see on võimalik?
 
 // Task list
-// 1. Logi decoder
+// 1. Logi decoder + flush funktsioon + test siinusandmetega
 // 2. Ettevalmistused failisüsteemi tulekuks
-// 3. Logi sisukord (iga 10 TS tagant kirje). Kujul timestamp-tema aadress failis(mitmes bait). Optional (kui metafaili ei anta, ei tahta).
+// 3. Logi sisukord (iga 10 TS tagant kirje). Kujul timestamp-tema aadress failis(mitmes bait). Optional (kui metafaili ei anta, ei tehta).
 // Hoitakse nii Log objekti väljana kui metafailina (peab säilima pärast powerouti).
 // 4. CRC iga logi entry kohta. Optional. Otsi CRCde kohta - mis on meile parim? Mathias pakub CRC8. Triple buffer???
 // 5. Slicing. Virtuaalsed sliced. Pointer algustimestampile ja pointer lõputimestampile (lähimale eelnevale). Dokumentatsioon! SliceLog tüüp?
@@ -22,7 +22,7 @@
 
 // Size of data queue in bytes (when the queue is full, it's written to memory)
 // NB! If using FLASH to store logs, this should be equal to (sub)sector size for maximum effective memory usage
-#define QUEUE_SIZE 16
+#define QUEUE_SIZE 256
 // Byte size in bits
 #define BYTE_SIZE 8
 
@@ -39,17 +39,18 @@ struct datapoint_t {
 
 template <class T, class U>
 class Log {
-    // TODO: end log with how many datapoints under last queue item?
-    uint8_t* data_queue;
-    uint8_t* double_buffer;
-    uint32_t queue_len = 0; // How many bytes have been added to the queue
-    time_t last_timestamp = 0; // Last timestamp of logged data
-    U data_added = 0; // How many datapoints have been added to the queue under the last timestamp
-
     private:
-        void init_memory(); // Initialize the memory device holding the logs
+        // TODO: end log with how many datapoints under last queue item?
+        uint8_t* data_queue;
+        uint8_t* double_buffer;
+        uint32_t queue_len = 0; // How many bytes have been added to the queue
+        time_t last_timestamp = 0; // Last timestamp of logged data
+        U data_added = 0; // How many datapoints have been added to the queue under the last timestamp
+        bool flushed = false;
+
+        void init_file(); // Initialize the file holding the logs
         void write_to_queue(auto var_address, uint8_t len); // Write data with specified length in byte form to the data queue
-        void write_to_memory(); // Write log to memory
+        void write_to_file(uint32_t size); // Write <size> bytes from active data buffer to log file
         void switch_buffers(); // Switch data and double buffer
 
     public:
@@ -57,13 +58,10 @@ class Log {
         void log(T* data); // Log data (implemented differently for different types), attach timestamp in function
         void log(T* data, time_t timestamp); // Log data with a given timestamp in the file
 
-        // log_entry_t* read(time_t starttime, time_t endtime); // Read an array of log entries from the chosen time period
+        void flush_buffer(); // Write all things in buffer to memory
 
-        Log<T,U> slice(time_t starttime, time_t endtime);
+        Log<T,U> slice(time_t starttime, time_t endtime); // Read an array of log entries from the chosen time period
         Log<T,U> compress(compression_method_t method); // Compress log with the chosen method
-
-        // Log<T,U> compress_interval(compression_method_t method, time_t starttime, time_t endtime); // Compress a time interval from the log with the chosen method
-
         Log<T,U> merge(Log<T,U> otherLog); // Merge two logs and create a new log
 };
 
