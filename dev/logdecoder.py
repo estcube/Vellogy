@@ -5,6 +5,8 @@
 
 import sys
 import struct
+import csv
+import matplotlib.pyplot as plt
 
 c_types = {
     "int8_t" : "b",
@@ -65,6 +67,18 @@ def log_decode(buffer, T_format, U_format, TS_format):
     return data[::-1], timestamps[::-1]
 
 
+def log_export_csv(filename, data, timestamps):
+    with open(filename, 'w', newline='\n') as file:
+        writer = csv.writer(file, delimiter=',')
+        for i in range(len(data)):
+            writer.writerow([times[i], data[i]])
+
+
+def log_plot(data, timestamps):
+    plt.plot(timestamps, data)
+    plt.show()
+
+
 if __name__ == "__main__":
     T_format = sys.argv[2]
     U_format = sys.argv[3]  # NB! U_size can't be 0
@@ -74,6 +88,6 @@ if __name__ == "__main__":
     with open(sys.argv[1], "rb") as infile:
         log_bytes = bytes(infile.read())
 
-    data, deltas = log_decode(log_bytes, T_format, U_format, TS_format)
-    print(data)
-    print(deltas)
+    data, times = log_decode(log_bytes, T_format, U_format, TS_format)
+    log_export_csv("log.csv", data, times)
+    log_plot(data, times)
