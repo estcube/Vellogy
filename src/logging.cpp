@@ -9,9 +9,20 @@
 #include "echal_gpio.h"
 
 template <class T, class U>
+uint32_t Log<T,U>::min_queue_size() {
+    uint32_t queue_size = 0;
+
+    queue_size += sizeof(time_t); // Size of timestamp
+    queue_size += sizeof(U); // Size of data_added
+    queue_size += (1 << (sizeof(U) * BYTE_SIZE)) * (sizeof(T) + sizeof(U)); // 2^{size_of_U_in_bits} * size_of_one_datapoint_with_timedelta
+
+    return queue_size;
+}
+
+template <class T, class U>
 Log<T,U>::Log() {
-    this->data_queue = (uint8_t *)malloc(QUEUE_SIZE);
-    this->double_buffer = (uint8_t *)malloc(QUEUE_SIZE);
+    this->data_queue = (uint8_t *)malloc(this->min_queue_size());
+    this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
 
     // this->init_metafile();
     // this->init_file();
@@ -19,39 +30,34 @@ Log<T,U>::Log() {
 
 template <class T, class U>
 Log<T,U>::Log(uint8_t* metafile, uint8_t* file) {
-    this->data_queue = (uint8_t *)malloc(QUEUE_SIZE);
-    this->double_buffer = (uint8_t *)malloc(QUEUE_SIZE);
-
     this->metafile = metafile;
     this->file = file;
     this->deserialize_meta_info(this->metafile);
+
+    this->data_queue = (uint8_t *)malloc(this->min_queue_size());
+    this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
 }
 
 template <class T, class U>
 void Log<T,U>::log(T* data, time_t timestamp) {
     bool new_entry = false;
 
-    if (!this->last_timestamp || this->flushed || timestamp - this->last_timestamp >= (1 << (sizeof(U) * BYTE_SIZE))) {
+    if (!this->last_timestamp || timestamp - this->last_timestamp >= (1 << (sizeof(U) * BYTE_SIZE))) {
         // If one timestamp resolution is full, write to queue how many datapoints were recorded under the previous timestamp
-        if (this->last_timestamp && !(this->flushed)) {
-            write_to_queue(&(this->data_added), sizeof(U), DATA_ADDED);
+        if (this->last_timestamp) {
+            this->write_to_queue_data_added();
         }
         // Create a new timestamp and write it to queue
         this->last_timestamp = timestamp;
-        write_to_queue(&(this->last_timestamp), sizeof(this->last_timestamp), TIMESTAMP);
-
+        this->write_to_queue_timestamp();
         // This is a new entry with a new timestamp
         new_entry = true;
-
-        // Log is no longer in flushed state
-        this->flushed = false;
     }
 
     // Write datapoint to queue
-    this->write_to_queue(data, sizeof(T), DATAPOINT);
-    // TODO: change data type
-    uint32_t time_diff = timestamp - this->last_timestamp;
-    this->write_to_queue(&time_diff, sizeof(U), TIMEDELTA);
+    this->write_to_queue_datapoint(data);
+    U time_diff = timestamp - this->last_timestamp;
+    this->write_to_queue_timedelta(time_diff);
 
     // The maximum number of datapoints under one timestamp is equal to maximum number of different deltas, 2^(size of U in bits)
     // To save memory, the number of datapoints written to the end of the entry is one less than there actually are
@@ -68,36 +74,31 @@ void Log<T,U>::log(T* data, time_t timestamp) {
 }
 
 template <class T, class U>
-void Log<T,U>::write_to_queue(auto var_address, uint8_t len, log_element_t element_type) {
-    // How many bytes of room is there left in the data queue
-    uint32_t remaining_bytes = QUEUE_SIZE - this->queue_len;
+void Log<T,U>::write_to_queue_timestamp() {
+    this->write_to_queue(&(this->last_timestamp), sizeof(time_t));
+}
 
-    // If a buffer switch is needed halfway through the write
-    if (len > remaining_bytes) {
-        // Write as many bytes as possible to the current buffer
-        memcpy(this->data_queue + this->queue_len, var_address, remaining_bytes);
-        this->queue_len += remaining_bytes;
+template <class T, class U>
+void Log<T,U>::write_to_queue_datapoint(T* datapoint) {
+    this->write_to_queue(datapoint, sizeof(T));
+}
 
-        // Switch buffers
-        this->switch_buffers();
+template <class T, class U>
+void Log<T,U>::write_to_queue_timedelta(U timedelta) {
+    this->write_to_queue(&timedelta, sizeof(U));
+}
 
-        // There are this->data_added full datapoints now in file (the one currently written might not be legitimate)
-        this->data_added_file = this->data_added;
-        // To start decoding the file, we need the position of the last timedelta (previously the position of the last timedelta in the buffer)
-        this->decode_start_position_file = this->decode_start_position_buffer;
+template <class T, class U>
+void Log<T,U>::write_to_queue_data_added() {
+    this->write_to_queue(&(this->data_added), sizeof(U));
+    this->switch_buffers();
+}
 
-        // Write remaining bytes to the new (switched) buffer
-        memcpy(this->data_queue, (uint8_t *)var_address + remaining_bytes, len - remaining_bytes);
-        this->queue_len += len - remaining_bytes;
-    } else { // If all bytes can be written to current buffer
-        memcpy(this->data_queue + this->queue_len, var_address, len);
-        this->queue_len += len;
 
-        // To be decoded properly, the last legitimate element needs to be a timedelta (data_added in case of flushed log)
-        if (element_type == TIMEDELTA) {
-            this->decode_start_position_buffer = this->queue_len;
-        }
-    }
+template <class T, class U>
+void Log<T,U>::write_to_queue(auto var_address, uint8_t len) {
+    std::memcpy(this->data_queue + this->queue_len, var_address, len);
+    this->queue_len += len;
 }
 
 template <class T, class U>
@@ -115,78 +116,14 @@ void Log<T,U>::switch_buffers() {
 }
 
 template <class T, class U>
-void Log<T,U>::flush_buffer() {
-    this->write_to_queue(&(this->data_added), sizeof(U), DATA_ADDED);
-    this->flushed = true;
-
-    this->switch_buffers();
-}
-
-template <class T, class U>
 void Log<T,U>::deserialize_meta_info(uint8_t* metafile) {
-    // Dummy structs to see the size of their fields' data types
-    log_decode_info_t dummy_decode_info = log_decode_info_t();
-    log_internal_state_t dummy_state_info = log_internal_state_t();
-
-    // If space taken up by decode info in the log metafile has not been calculated yet
-    if (this->decode_info_offset == 0) {
-        this->decode_info_offset = sizeof(dummy_decode_info.type)
-        + sizeof(dummy_decode_info.TS_seconds_size)
-        + sizeof(dummy_decode_info.TS_subseconds_size)
-        + sizeof(dummy_decode_info.U_size);
-
-        // Find the space taken up by the T data type format string
-        uint8_t T_formatstring_len = *(this->metafile + this->decode_info_offset);
-        this->decode_info_offset += 1 + T_formatstring_len;
-
-        this->decode_info_offset += sizeof(dummy_decode_info.file_size);
-
-        // Find the space taken up by the path to log file
-        uint8_t path_len = *(this->metafile + this->decode_info_offset);
-        this->decode_info_offset += 1 + path_len;
-
-        this->decode_info_offset += sizeof(dummy_decode_info.buffer_size);
-    }
-
-    // Set an appropriate offset to start reading the metafile from internal state info (and skip the decode info)
-    uint32_t offset = this->decode_info_offset;
-
-    // Copy info from metafile to Log object fields
-    memcpy(&(this->last_timestamp), metafile + offset, sizeof(dummy_state_info.last_timestamp));
-    offset += sizeof(dummy_state_info.last_timestamp);
-    memcpy(&(this->data_added_file), metafile + offset, sizeof(this->data_added_file));
-    offset += sizeof(dummy_state_info.data_added_file);
-    this->data_added = this->data_added_file;
-    memcpy(&(this->decode_start_position_file), metafile + offset, sizeof(this->decode_start_position_file));
-    offset += sizeof(dummy_state_info.decode_start_position_file);
-
-    this->flushed = *((bool*)(metafile + offset));
-    offset += sizeof(dummy_state_info.flushed);
+    std::memcpy(&(this->decode_info), metafile, sizeof(this->decode_info));
 }
 
 template <class T, class U>
 uint8_t* Log<T,U>::serialize_meta_info() {
-    // We only want to change internal state info, not decode info
-    uint32_t offset = this->decode_info_offset;
-
-    // Copy internal state info from Log object to metafile
-    memcpy(this->metafile + offset, &(this->last_timestamp), sizeof(this->last_timestamp));
-    offset += sizeof(this->last_timestamp);
-    memcpy(this->metafile + offset, &(this->data_added_file), sizeof(this->data_added_file));
-    offset += sizeof(this->data_added_file);
-
-    // data_added_file possibly takes up more bytes than data_added field
-    for (uint8_t i = 0; i < sizeof(log_internal_state_t().data_added_file) - sizeof(U); i++) {
-        this->metafile[offset] = 0;
-        offset++;
-    }
-
-    memcpy(this->metafile + offset, &(this->decode_start_position_file), sizeof(this->decode_start_position_file));
-    offset += sizeof(this->decode_start_position_file);
-    this->metafile[offset] = this->flushed;
-    offset++;
-
-    return this->metafile; // return metafile pointer
+    std::memcpy(metafile, &(this->decode_info), sizeof(this->decode_info));
+    return this->metafile;
 }
 
 template <class T, class U>
