@@ -46,6 +46,18 @@ void Log<T,U>::log(T* data, time_t timestamp) {
         // If one timestamp resolution is full, write to queue how many datapoints were recorded under the previous timestamp
         if (this->last_timestamp) {
             this->write_to_queue_data_added();
+            // A new entry was written to the log file
+            this->file_entries++;
+
+            // Create an index entry if enough log entries have been added to the log file
+            if (this->file_entries % INDEX_DENSITY == 1) {
+                this->index_ts[this->file_entries / INDEX_DENSITY] = this->last_timestamp;
+                this->index_pos[this->file_entries / INDEX_DENSITY] = this->file_size - this->queue_len;
+                this->index_entries++;
+            }
+
+            // Reset queue length to 0
+            this->queue_len = 0;
         }
         // Create a new timestamp and write it to queue
         this->last_timestamp = timestamp;
@@ -111,18 +123,49 @@ void Log<T,U>::switch_buffers() {
     // Write data to file
     // this->write_to_file(this->queue_len);
 
-    // Reset queue length to 0
-    this->queue_len = 0;
+    // A queue_len worth of bytes was appended to the log file
+    this->file_size += this->queue_len;
 }
 
 template <class T, class U>
 void Log<T,U>::deserialize_meta_info(uint8_t* metafile) {
-    std::memcpy(&(this->decode_info), metafile, sizeof(this->decode_info));
+    uint8_t* metafile_pos = metafile;
+
+    std::memcpy(&(this->decode_info), metafile_pos, sizeof(this->decode_info));
+    metafile_pos += sizeof(this->decode_info);
+    std::memcpy(&(this->file_entries), metafile_pos, sizeof(this->file_entries));
+    metafile_pos += sizeof(this->file_entries);
+    std::memcpy(&(this->file_size), metafile_pos, sizeof(this->file_size));
+    metafile_pos += sizeof(this->file_size);
+    std::memcpy(&(this->index_entries), metafile_pos, sizeof(this->index_entries));
+    metafile_pos += sizeof(this->index_entries);
+
+    for (uint32_t i = 0; i < this->index_entries; i++) {
+        std::memcpy(this->index_ts + i, metafile_pos, sizeof(time_t));
+        std::memcpy(this->index_pos + i, metafile_pos + sizeof(time_t), sizeof(uint32_t));
+        metafile_pos += sizeof(time_t) + sizeof(uint32_t);
+    }
 }
 
 template <class T, class U>
 uint8_t* Log<T,U>::serialize_meta_info() {
-    std::memcpy(metafile, &(this->decode_info), sizeof(this->decode_info));
+    uint8_t* metafile_pos = metafile;
+
+    std::memcpy(metafile_pos, &(this->decode_info), sizeof(this->decode_info));
+    metafile_pos += sizeof(this->decode_info);
+    std::memcpy(metafile_pos, &(this->file_entries), sizeof(this->file_entries));
+    metafile_pos += sizeof(this->file_entries);
+    std::memcpy(metafile_pos, &(this->file_size), sizeof(this->file_size));
+    metafile_pos += sizeof(this->file_size);
+    std::memcpy(metafile_pos, &(this->index_entries), sizeof(this->index_entries));
+    metafile_pos += sizeof(this->index_entries);
+
+    for (uint32_t i = 0; i < this->index_entries; i++) {
+        std::memcpy(metafile_pos, this->index_ts + i, sizeof(time_t));
+        std::memcpy(metafile_pos + sizeof(time_t), this->index_pos + i, sizeof(uint32_t));
+        metafile_pos += sizeof(time_t) + sizeof(uint32_t);
+    }
+
     return this->metafile;
 }
 

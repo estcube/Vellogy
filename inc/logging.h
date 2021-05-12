@@ -25,11 +25,12 @@
 // 5. Slicing. Virtuaalsed sliced. Pointer algustimestampile ja pointer lõputimestampile (lähimale eelnevale). Dokumentatsioon! SliceLog tüüp?
 // 6. SliceLog objektil on compress funktsioon. Loetakse antud aegadega piiratud andmed ja siis compressitakse. Kui kasutaja annab faili, kirjutatakse tulemus faili.
 
-// Size of data queue in bytes (when the queue is full, it's written to memory)
-// NB! If using FLASH to store logs, this should be equal to (sub)sector size for maximum effective memory usage
-#define QUEUE_SIZE 16
 // Byte size in bits
 #define BYTE_SIZE 8
+// After how many log entries is an index object created
+#define INDEX_DENSITY 5
+// How much entries can one index hold
+#define INDEX_SIZE 16
 
 enum compression_method_t {
     LOG_COMPRESSION_FFT,
@@ -57,6 +58,13 @@ class Log {
         uint8_t* metafile;
         log_decode_info_t decode_info;
 
+        uint32_t file_size = 0; // Size of log file in bytes // TODO: this logic really shouldn't be on the logging level
+        uint32_t file_entries = 0; // How many log entries have been added to the log file
+
+        time_t index_ts[INDEX_SIZE];
+        uint32_t index_pos[INDEX_SIZE];
+        uint32_t index_entries = 0; // How many entries have been added to the index
+
         // TODO: end log with how many datapoints under last queue item?
         uint8_t* data_queue;
         uint8_t* double_buffer;
@@ -64,7 +72,6 @@ class Log {
 
         time_t last_timestamp = 0; // Last timestamp of logged data
         U data_added = 0; // How many datapoints have been added to the queue under the last timestamp
-        U data_added_file = 0; // How many datapoints have been added to the file under the last timestamp (in file)
 
         uint32_t min_queue_size(); // Calculate minimum possible size in bytes for the data queue (maximum size of log in bytes)
 
