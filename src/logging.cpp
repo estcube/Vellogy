@@ -8,6 +8,111 @@
 #include "echal_rcc.h"
 #include "echal_gpio.h"
 
+template<class T, class U>
+uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location) {
+    uint32_t reading_location = search_location;
+
+    bool done = false;
+    while (!done) {
+        reading_location -= sizeof(U);
+        U data_added;
+        std::memcpy(&data_added, file + reading_location, sizeof(U));
+
+        // Let's jump ahead and read the timestamp in the beginning of the entry
+        reading_location -= (data_added + 1)*(sizeof(T) + sizeof(U)) + sizeof(time_t);
+        time_t entry_ts;
+        std::memcpy(&entry_ts, file + reading_location, sizeof(time_t));
+
+        if (timestamp >= entry_ts) {
+            // The timestamp we are looking for is in this entry
+            done = true;
+        }
+    }
+
+    // TODO: the reading_location is currently one entry behind
+    return reading_location;
+}
+
+// TODO: kas slice lugemine peaks toimuma seotult logi objektiga või eraldi? Threading?
+template<class T, class U>
+log_slice_t log_slice(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts) {
+    uint32_t index_entries = indexfile_size / (sizeof(time_t) + sizeof(uint32_t)); // Number of index entries
+
+    uint32_t first_index = 0;
+    uint32_t second_index = index_entries - 1;
+
+    uint32_t start_location, end_location;  // Locations of the log entries containing start_ts and end_ts, respectively (in the log file)
+
+    // TODO: throw error is start_ts / end_ts out of bounds or end_ts < start_ts
+
+    bool done = false;
+    while (!done) {
+        uint32_t middle_index = (first_index + second_index) / 2;
+        time_t middle_ts;
+        std::memcpy(&middle_ts, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
+
+        // TODO: what if it's first_index == second_index!!!
+        if (second_index - first_index == 1) {
+            done = true;
+            uint32_t search_location;
+            std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            start_location = find_entry<T,U>(file, start_ts, search_location);
+            first_index = middle_index;  // Actually it already is middle_index, but for clarity
+        } else if (start_ts > middle_ts) {
+            first_index = middle_index;
+        } else if (start_ts < middle_ts) {
+            second_index = middle_index;
+        } else if (start_ts == middle_ts) {
+            done = true;
+            std::memcpy(&start_location, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            first_index = middle_index;  // first_index is now index of start_ts in the indexfile entries list
+        }
+    }
+
+    done = false;
+
+    time_t second_ts;
+    std::memcpy(&second_ts, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
+    if (end_ts < second_ts) {  // If start_ts and end_ts are in the same index entry
+        uint32_t search_location;
+        std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+        end_location = find_entry<T,U>(file, end_ts, search_location);
+
+        log_slice_t slice;
+        slice.start_location = start_location;
+        slice.end_location = end_location;
+        return slice;
+    }
+
+    // If end_ts is in a different index entry than start_ts
+    second_index = index_entries - 1;
+    while (!done) {
+        uint32_t middle_index = (first_index + second_index) / 2;
+        time_t middle_ts;
+        std::memcpy(&middle_ts, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
+
+        // TODO: what if it's first_index == second_index!!!
+        if (second_index - first_index == 1) {
+            done = true;
+            uint32_t search_location;
+            std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            end_location = find_entry<T,U>(file, end_ts, search_location);
+        } else if (end_ts > middle_ts) {
+            first_index = middle_index;
+        } else if (end_ts < middle_ts) {
+            second_index = middle_index;
+        } else if (end_ts == middle_ts) {
+            done = true;
+            std::memcpy(&end_location, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+        }
+    }
+
+    log_slice_t slice;
+    slice.start_location = start_location;
+    slice.end_location = end_location;
+    return slice;
+}
+
 template <class T, class U>
 uint32_t Log<T,U>::min_queue_size() {
     uint32_t queue_size = 0;
@@ -121,10 +226,7 @@ void Log<T,U>::switch_buffers() {
     this->double_buffer = temp;
 
     // Write data to file
-    // this->write_to_file(this->queue_len);
-
-    // A queue_len worth of bytes was appended to the log file
-    this->file_size += this->queue_len;
+    this->write_to_file(this->queue_len);
 }
 
 template <class T, class U>
@@ -183,42 +285,22 @@ void Log<T,U>::init_metafile() {
 // Dummy
 template <class T, class U>
 void Log<T,U>::init_file() {
-    hal_errors_t hal_error = HAL_OK;
-    mt25ql_errors_t mt_error = MT25QL_OK;
-
-    hal_rcc_init();
-
-    // Enable flash
-    hal_gpio_pin_cfg_t pin_cfg = hal_gpio_pin_cfg_default;
-    hal_error = hal_gpio_pin_init(FLASH1_EN, &pin_cfg);
-    hal_error = hal_gpio_pin_write(FLASH1_EN, FLASH1_EN_ACTIVE);
-
-    // Wait a little bit
-    for(uint32_t i = 100000; i; i--);
-
-    mt25ql_cfg_t cfg_table = {
-        .command_mode = HAL_QSPI_QUADSPI_PHASE,   // Commands/data on four lines (per flash)
-        .wrap = MT25QL_WRAP_CONTINUOUS
-    };
-
-    mt25ql_pins_t pin_table = {
-        .clk = FLASH1_CLK,
-        .dq = {FLASH1_BK1_IO0, FLASH1_BK1_IO1, FLASH1_BK1_IO2, FLASH1_BK1_IO3,
-               FLASH2_BK2_IO0, FLASH2_BK2_IO1, FLASH2_BK2_IO2, FLASH2_BK2_IO3},
-        .cs = {FLASH1_BK1_CS, FLASH2_BK2_CS}
-    };
-
-    mt_error = mt25ql_initialize(&cfg_table, &pin_table);
-    mt_error = mt25ql_unlock_sectors();
+    return;
 }
 
 // Dummy
 template <class T, class U>
 void Log<T,U>::write_to_file(uint32_t size) {
-    mt25ql_errors_t mt_error = MT25QL_OK;
-    mt_error = mt25ql_program(this->double_buffer, 0x0000F000, size);
-
-    // Debug purposes
-    uint8_t read_queue[4096] = {};
-    mt_error = mt25ql_read(read_queue, 0x0000F000, 4096);
+    std::memcpy(file + file_size, this->double_buffer, size);
+    // A queue_len worth of bytes was appended to the log file
+    this->file_size += this->queue_len;
 }
+
+template class Log<int, uint8_t>;
+// template class Log<int, uint16_t>;
+// template class Log<int, uint32_t>;
+template class Log<double, uint8_t>;
+// template class Log<double, uint16_t>;
+// template class Log<double, uint32_t>;
+template uint32_t find_entry<int, uint8_t>(uint8_t* file, time_t timestamp, uint32_t search_location);
+template log_slice_t log_slice<int, uint8_t>(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);

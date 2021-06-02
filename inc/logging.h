@@ -13,6 +13,10 @@
 // TODO: mis juhtub, kui entry saab täis, aga resolution pole veel täis? Kas see on võimalik?
 // TODO: flush funktsioon tagasi tuua
 
+// TODO: eraldi index file, indexit ära uuesti sisse loe index file'st
+// TODO: tee indexi'st otsija (slicer) C-s!!!
+// TODO: slice'des, kui  slice otspunktid asuvad samas entry's, ära tee teise otspunkti otsingut uuesti läbi
+
 // NOTE: metafile ülekirjutamine on ok
 
 // Task list
@@ -51,11 +55,24 @@ struct log_decode_info_t {
     uint8_t U_size; // For timestamp delta, we only need the number of bytes to deduce the formatstring
 };
 
+struct log_slice_t {
+    uint32_t start_location;
+    uint32_t end_location;
+};
+
+template <class T, class U>
+uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location);
+
+// Return the locations of the entries containing start timestamp and end timestamp in the log file in an array
+template <class T, class U>
+log_slice_t log_slice(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
+
 template <class T, class U>
 class Log {
     private:
         uint8_t* file;
         uint8_t* metafile;
+        uint8_t* indexfile;
         log_decode_info_t decode_info;
 
         uint32_t file_size = 0; // Size of log file in bytes // TODO: this logic really shouldn't be on the logging level
@@ -116,10 +133,4 @@ class ThreadsafeLog : public Log<T,U> {
 
 };
 
-template class Log<int, uint8_t>;
-// template class Log<int, uint16_t>;
-// template class Log<int, uint32_t>;
-template class Log<double, uint8_t>;
-// template class Log<double, uint16_t>;
-// template class Log<double, uint32_t>;
 #endif

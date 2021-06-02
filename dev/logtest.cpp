@@ -98,12 +98,60 @@ static void test5() {
     Log<int, uint8_t> logi_test = Log<int, uint8_t>(metafile, file);
 }
 
+static void test6() {
+    uint8_t metafile[200] = {
+        // decode info
+        0x00, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x01, 0x00,
+        // number of file entries
+        0x00, 0x00, 0x00, 0x00,
+        // file size in bytes
+        0x00, 0x00, 0x00, 0x00,
+        // number of index entries
+        0x00, 0x00, 0x00, 0x00
+    };
+    uint8_t file[1024];
+
+    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, file);
+
+    int data[100];
+    time_t timestamp = 1603730000;
+
+    for (uint8_t i = 0; i < 100; i++) {
+        data[i] = i*100;
+        logi.log(data + i, timestamp + i*64);
+    }
+
+    logi.save_meta_info();
+
+    // A log to test whether metainfo was serialized correctly
+    Log<int, uint8_t> logi_test = Log<int, uint8_t>(metafile, file);
+
+    // Exact timestamp tests:
+    // Entries in different log and index entries
+    log_slice_t slice1 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730064, 1603735056);
+    // Entries in different log, but same index entries
+    log_slice_t slice2 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730320, 1603730576);
+    // Entries in the same log (and index) entry
+    log_slice_t slice3 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730064, 1603730128);
+
+    // Random timestamp tests:
+    // Entries in different log and index entries
+    log_slice_t slice4 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603732103, 1603735077);
+    // Entries in different log, but same index entries
+    log_slice_t slice5 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730261, 1603730619);
+    // Entries in the same log (and index) entry
+    log_slice_t slice6 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730901, 1603736130);
+    // Should be empty
+    log_slice_t slice7 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603734070, 1603734098);
+}
+
 int main() {
     // test1();
     // test2();
     // test3();
     // test4();
-    test5();
+    // test5();
+    test6();
 
     Success_Handler();
 }
