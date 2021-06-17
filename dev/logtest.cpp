@@ -100,7 +100,7 @@ static void test5() {
 
 static void test6() {
     uint8_t metafile[200] = {
-        // decode info
+        // decode info (random)
         0x00, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x01, 0x00,
         // number of file entries
         0x00, 0x00, 0x00, 0x00,
@@ -113,10 +113,12 @@ static void test6() {
 
     Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, file);
 
-    int data[100];
+    int data[101];
     time_t timestamp = 1603730000;
 
-    for (uint8_t i = 0; i < 100; i++) {
+    // Create a log file with 25 entries, each entry with 4 datapoints (size of one full log entry is 29 bytes)
+    // One extra datapoint shall remain in volatile memory
+    for (uint8_t i = 0; i < 101; i++) {
         data[i] = i*100;
         logi.log(data + i, timestamp + i*64);
     }
@@ -128,21 +130,37 @@ static void test6() {
 
     // Exact timestamp tests:
     // Entries in different log and index entries
-    log_slice_t slice1 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730064, 1603735056);
+    log_slice_t slice1 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730064, 1603735056);  // Expected {0, 580}
     // Entries in different log, but same index entries
-    log_slice_t slice2 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730320, 1603730576);
+    log_slice_t slice2 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730320, 1603730576);  // Expected {29, 87}
     // Entries in the same log (and index) entry
-    log_slice_t slice3 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730064, 1603730128);
+    log_slice_t slice3 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730064, 1603730128);  // Expected {0, 29}
 
     // Random timestamp tests:
     // Entries in different log and index entries
-    log_slice_t slice4 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603732103, 1603735077);
+    log_slice_t slice4 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603732103, 1603735077);  // Expected {232, 580}
     // Entries in different log, but same index entries
-    log_slice_t slice5 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730261, 1603730619);
+    log_slice_t slice5 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730261, 1603730619);  // Expected {29, 87}
     // Entries in the same log (and index) entry
-    log_slice_t slice6 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730901, 1603736130);
-    // Should be empty
-    log_slice_t slice7 = log_slice<int, uint8_t>(file, metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603734070, 1603734098);
+    log_slice_t slice6 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730901, 1603736130);  // Expected {87, 696}
+    // Entries in consecutive log entries
+    log_slice_t slice7 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603734070, 1603734098);  // Expected {435, 493}
+
+    // Edge cases
+    // Both timestamps in the very last entry of the log file
+    log_slice_t slice8 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603736170, 1603736330);  // Expected {696, 725}
+    // Timestamps are entry timestamps
+    log_slice_t slice9 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730512, 1603736144);  // Expected {58, 725}
+    // Timestamps are entry timestamps
+    log_slice_t slice10 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603736144, 1603736336);  // Expected {696, 725}
+    // Timestamps are index entry timestamps
+    log_slice_t slice11 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603732560, 1603735120);  // Expected {290, 609}
+    // End timestamp conincides with middle timestamp of the index
+    log_slice_t slice12 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730512, 1603732560);  // Expected {58, 319}
+    // Index only contains one (full) entry
+    log_slice_t slice13 = log_slice<int, uint8_t>(file, 29 * 5, metafile + 36, 1 * (sizeof(time_t) + sizeof(uint32_t)), 1603730011, 1603730200);  // Expected {0, 29}
+    // Index only contains one (half) entry
+    log_slice_t slice14 = log_slice<int, uint8_t>(file, 29 * 3, metafile + 36, 1 * (sizeof(time_t) + sizeof(uint32_t)), 1603730003, 1603730030);  // Expected {0, 29}
 }
 
 int main() {

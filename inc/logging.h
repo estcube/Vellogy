@@ -60,12 +60,13 @@ struct log_slice_t {
     uint32_t end_location;
 };
 
+// Find closest entry whose timestamp is less than or equal to given timestamp, starting from address file + search_location
 template <class T, class U>
-uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location);
+uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding);
 
 // Return the locations of the entries containing start timestamp and end timestamp in the log file in an array
 template <class T, class U>
-log_slice_t log_slice(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
+log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
 
 template <class T, class U>
 class Log {
@@ -102,6 +103,7 @@ class Log {
         void deserialize_meta_info(uint8_t* metafile);
         uint8_t* serialize_meta_info();
         void init_metafile(); // Initialize the metafile
+        void init_indexfile(); // Initialize the indexfile
         void init_file(); // Initialize the file holding the logs
         void write_to_file(uint32_t size); // Write <size> bytes from active data buffer to log file
 
@@ -111,6 +113,7 @@ class Log {
         void log(T* data); // Log data (implemented differently for different types), attach timestamp in function
         void log(T* data, time_t timestamp); // Log data with a given timestamp in the file
 
+        uint32_t get_file_size(); // Get size of log file in bytes
         void save_meta_info(); // Write current state to metafile
 
         Log<T,U> slice(time_t starttime, time_t endtime); // Read an array of log entries from the chosen time period

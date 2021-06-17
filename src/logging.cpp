@@ -9,7 +9,7 @@
 #include "echal_gpio.h"
 
 template<class T, class U>
-uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location) {
+uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding) {
     uint32_t reading_location = search_location;
 
     bool done = false;
@@ -19,31 +19,55 @@ uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location) {
         std::memcpy(&data_added, file + reading_location, sizeof(U));
 
         // Let's jump ahead and read the timestamp in the beginning of the entry
-        reading_location -= (data_added + 1)*(sizeof(T) + sizeof(U)) + sizeof(time_t);
+        uint32_t data_size = (data_added + 1)*(sizeof(T) + sizeof(U));
+        reading_location -= data_size + sizeof(time_t);
         time_t entry_ts;
         std::memcpy(&entry_ts, file + reading_location, sizeof(time_t));
 
+        // The timestamp we are looking for is in this entry
         if (timestamp >= entry_ts) {
-            // The timestamp we are looking for is in this entry
+            // if we need to find the succeeding entry to the one containing the timestamp instead
+            if (succeeding) reading_location += sizeof(time_t) + data_size + sizeof(U);
+
+            // Exit search loop
             done = true;
         }
     }
 
-    // TODO: the reading_location is currently one entry behind
     return reading_location;
 }
 
 // TODO: kas slice lugemine peaks toimuma seotult logi objektiga või eraldi? Threading?
 template<class T, class U>
-log_slice_t log_slice(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts) {
+log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts) {
     uint32_t index_entries = indexfile_size / (sizeof(time_t) + sizeof(uint32_t)); // Number of index entries
 
     uint32_t first_index = 0;
     uint32_t second_index = index_entries - 1;
 
-    uint32_t start_location, end_location;  // Locations of the log entries containing start_ts and end_ts, respectively (in the log file)
+    // Find first timestamp value in the log file
+    time_t first_ts;
+    std::memcpy(&first_ts, file, sizeof(time_t));
+
+    // Find last timestamp value in the log file
+    time_t last_ts;
+    U last_data_added;
+    std::memcpy(&last_data_added, file + file_size - sizeof(U), sizeof(U));
+    U last_timedelta;
+    std::memcpy(&last_timedelta, file + file_size - 2 * sizeof(U), sizeof(U));
+    std::memcpy(&last_ts, file + file_size - sizeof(U) - last_data_added*(sizeof(T) + sizeof(U)) - sizeof(time_t), sizeof(time_t));
+    last_ts += last_timedelta;
+
+    // Find timestamp at second_index of indexfile
+    time_t second_ts;
+    std::memcpy(&second_ts, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
+
+    uint32_t start_location, end_location;  // Locations of the log entries containing start_ts and end_ts, respectively, end_ts is non-inclusive (in the log file)
 
     // TODO: throw error is start_ts / end_ts out of bounds or end_ts < start_ts
+    if (end_ts < start_ts) {
+
+    }
 
     bool done = false;
     while (!done) {
@@ -51,32 +75,34 @@ log_slice_t log_slice(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size
         time_t middle_ts;
         std::memcpy(&middle_ts, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
 
-        // TODO: what if it's first_index == second_index!!!
-        if (second_index - first_index == 1) {
-            done = true;
-            uint32_t search_location;
-            std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
-            start_location = find_entry<T,U>(file, start_ts, search_location);
+        if (first_index == second_index) {
+            start_location = find_entry<T,U>(file, start_ts, file_size, false);
             first_index = middle_index;  // Actually it already is middle_index, but for clarity
+            done = true;
+        } else if (second_index - first_index == 1) {
+            uint32_t search_location = file_size;
+            if (start_ts < second_ts) std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            start_location = find_entry<T,U>(file, start_ts, search_location, false);
+            first_index = middle_index;  // Actually it already is middle_index, but for clarity
+            done = true;
+        } else if (start_ts == middle_ts) {  // Extremely unlikely case
+            std::memcpy(&start_location, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            first_index = middle_index;  // first_index is now index of start_ts in the indexfile entries list
+            done = true;
         } else if (start_ts > middle_ts) {
             first_index = middle_index;
         } else if (start_ts < middle_ts) {
             second_index = middle_index;
-        } else if (start_ts == middle_ts) {
-            done = true;
-            std::memcpy(&start_location, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
-            first_index = middle_index;  // first_index is now index of start_ts in the indexfile entries list
+            std::memcpy(&second_ts, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
         }
     }
 
     done = false;
 
-    time_t second_ts;
-    std::memcpy(&second_ts, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
     if (end_ts < second_ts) {  // If start_ts and end_ts are in the same index entry
         uint32_t search_location;
         std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
-        end_location = find_entry<T,U>(file, end_ts, search_location);
+        end_location = find_entry<T,U>(file, end_ts, search_location, true);
 
         log_slice_t slice;
         slice.start_location = start_location;
@@ -86,24 +112,31 @@ log_slice_t log_slice(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size
 
     // If end_ts is in a different index entry than start_ts
     second_index = index_entries - 1;
+    std::memcpy(&second_ts, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
     while (!done) {
         uint32_t middle_index = (first_index + second_index) / 2;
         time_t middle_ts;
         std::memcpy(&middle_ts, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
 
-        // TODO: what if it's first_index == second_index!!!
-        if (second_index - first_index == 1) {
+        if (first_index == second_index) {
+            end_location = find_entry<T,U>(file, end_ts, file_size, true);
             done = true;
+        } else if (second_index - first_index == 1) {
+            uint32_t search_location = file_size;
+            if (end_ts < second_ts) std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            end_location = find_entry<T,U>(file, end_ts, search_location, true);
+            done = true;
+        } else if (end_ts == middle_ts) {  // Extremely unlikely case
             uint32_t search_location;
-            std::memcpy(&search_location, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
-            end_location = find_entry<T,U>(file, end_ts, search_location);
+            // end_location is the location of the next timestamp after middle_ts, because it is non-inclusive
+            std::memcpy(&search_location, indexfile + (middle_index + 1) * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            end_location = find_entry<T,U>(file, end_ts, search_location, true);
+            done = true;
         } else if (end_ts > middle_ts) {
             first_index = middle_index;
         } else if (end_ts < middle_ts) {
             second_index = middle_index;
-        } else if (end_ts == middle_ts) {
-            done = true;
-            std::memcpy(&end_location, indexfile + middle_index * (sizeof(time_t) + sizeof(uint32_t)) + sizeof(time_t), sizeof(uint32_t));
+            std::memcpy(&second_ts, indexfile + second_index * (sizeof(time_t) + sizeof(uint32_t)), sizeof(time_t));
         }
     }
 
@@ -130,6 +163,7 @@ Log<T,U>::Log() {
     this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
 
     // this->init_metafile();
+    // this->init_indexfile();
     // this->init_file();
 }
 
@@ -272,6 +306,11 @@ uint8_t* Log<T,U>::serialize_meta_info() {
 }
 
 template <class T, class U>
+uint32_t Log<T,U>::get_file_size() {
+    return this->file_size;
+}
+
+template <class T, class U>
 void Log<T,U>::save_meta_info() {
     this->serialize_meta_info();
 }
@@ -279,6 +318,12 @@ void Log<T,U>::save_meta_info() {
 // Dummy
 template <class T, class U>
 void Log<T,U>::init_metafile() {
+    return;
+}
+
+// Dummy
+template <class T, class U>
+void Log<T,U>::init_indexfile() {
     return;
 }
 
@@ -302,5 +347,5 @@ template class Log<int, uint8_t>;
 template class Log<double, uint8_t>;
 // template class Log<double, uint16_t>;
 // template class Log<double, uint32_t>;
-template uint32_t find_entry<int, uint8_t>(uint8_t* file, time_t timestamp, uint32_t search_location);
-template log_slice_t log_slice<int, uint8_t>(uint8_t* file, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
+template uint32_t find_entry<int, uint8_t>(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding);
+template log_slice_t log_slice<int, uint8_t>(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
