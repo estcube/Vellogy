@@ -27,6 +27,7 @@ static void test2() {
 
     Log<double, uint8_t> logi = Log<double, uint8_t>();
 
+    // Save sine data (to be plotted later)
     for (uint16_t time = 0; time < 360; time++) {
         result[time] = sin((timestamp + time) * PI / 180.0);
         logi.log(result + time, timestamp + time);
@@ -36,9 +37,10 @@ static void test2() {
 static void test3() {
     // Metafile containing random decode info
     uint8_t metafile[] = {0x00, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x01};
-    uint8_t* file = NULL;
+    uint8_t indexfile[128];
+    uint8_t file[1024];
 
-    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, file);
+    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, indexfile, file);
 
     int datapoints[] = {14, 15, 2000, 3333, 4690};
     time_t timestamps[] = {1603723720, 1603724000, 1603724000, 1603724100, 1603724900};
@@ -71,8 +73,10 @@ static void test5() {
         0x18, 0x00, 0x00, 0x00,
         // file size in bytes
         0xb8, 0x02, 0x00, 0x00,
-        // number of index entries
-        0x05, 0x00, 0x00, 0x00,
+        // indexfile size in bytes
+        0x3c, 0x00, 0x00, 0x00,
+    };
+    uint8_t indexfile[256] = {
         // index entries (each on their own line)
         0x8f, 0xe1, 0x96, 0x5f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         0x8f, 0xe6, 0x96, 0x5f, 0x00, 0x00, 0x00, 0x00, 0x91, 0x00, 0x00, 0x00,
@@ -80,9 +84,10 @@ static void test5() {
         0x8f, 0xf0, 0x96, 0x5f, 0x00, 0x00, 0x00, 0x00, 0xb3, 0x01, 0x00, 0x00,
         0x8f, 0xf5, 0x96, 0x5f, 0x00, 0x00, 0x00, 0x00, 0x44, 0x02, 0x00, 0x00
     };
-    uint8_t* file = NULL;
+    uint8_t file[2048];
 
-    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, file);
+    // We'll see if the metafile was read correctly
+    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, indexfile, file);
 
     int data[100];
     time_t timestamp = 1603730000;
@@ -95,7 +100,7 @@ static void test5() {
     logi.save_meta_info();
 
     // A log to test whether metainfo was serialized correctly
-    Log<int, uint8_t> logi_test = Log<int, uint8_t>(metafile, file);
+    Log<int, uint8_t> logi_test = Log<int, uint8_t>(metafile, indexfile, file);
 }
 
 static void test6() {
@@ -106,12 +111,13 @@ static void test6() {
         0x00, 0x00, 0x00, 0x00,
         // file size in bytes
         0x00, 0x00, 0x00, 0x00,
-        // number of index entries
+        // index file size in bytes
         0x00, 0x00, 0x00, 0x00
     };
+    uint8_t indexfile[128];
     uint8_t file[1024];
 
-    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, file);
+    Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, indexfile, file);
 
     int data[101];
     time_t timestamp = 1603730000;
@@ -126,7 +132,7 @@ static void test6() {
     logi.save_meta_info();
 
     // A log to test whether metainfo was serialized correctly
-    Log<int, uint8_t> logi_test = Log<int, uint8_t>(metafile, file);
+    Log<int, uint8_t> logi_test = Log<int, uint8_t>(metafile, indexfile, file);
 
     // Exact timestamp tests:
     // Entries in different log and index entries
@@ -161,6 +167,14 @@ static void test6() {
     log_slice_t slice13 = log_slice<int, uint8_t>(file, 29 * 5, metafile + 36, 1 * (sizeof(time_t) + sizeof(uint32_t)), 1603730011, 1603730200);  // Expected {0, 29}
     // Index only contains one (half) entry
     log_slice_t slice14 = log_slice<int, uint8_t>(file, 29 * 3, metafile + 36, 1 * (sizeof(time_t) + sizeof(uint32_t)), 1603730003, 1603730030);  // Expected {0, 29}
+
+    // (Semi-)bad/pointless things the user can do
+    // Boundary timestamps out of bounds
+    log_slice_t slice15 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 10, 2002002002);  // Expected {0, 725}
+    // End timestamp smaller than start timestamp
+    log_slice_t slice16 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 2002002002, 10);  // Expected {UINT_MAX, UINT_MAX}
+    // End timestamp equal to start timestamp
+    log_slice_t slice17 = log_slice<int, uint8_t>(file, logi.get_file_size(), metafile + 36, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730512, 1603730512);  // Expected {58, 87}
 }
 
 int main() {
