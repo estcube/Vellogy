@@ -13,8 +13,13 @@
 // Smaller stuff:
 // TODO: use references
 // TODO: flush funktsioon tagasi tuua
+// TODO: file allocation
 
-// TODO: 1 väiksem (üleval), 3 suuremat (all)
+// TODO: väiksemad asjad (üleval), 1 küsimus (kas metainfo tagastamist kui sellist on vaja? või piisab save_meta_info f-nist), 2 suuremat (all)
+/*
+Optional meta- and indexfile:
+Eraldi alamklass indeksiga ja indeksita logi jaoks?
+*/
 
 // NOTE: metafile ülekirjutamine on ok
 
@@ -78,8 +83,8 @@ class Log {
         uint8_t* file;
         uint32_t file_size = 0; // Size of log file in bytes
         uint32_t file_entries = 0; // How many log entries have been added to the log file
-        uint8_t* metafile;
-        uint8_t* indexfile;
+        uint8_t* metafile = NULL;
+        uint8_t* indexfile = NULL;
         uint32_t indexfile_size = 0; // Size of index file in bytes
         uint32_t index_entries = 0; // How many entries have been added to the index (during the current logging session)
         time_t index_ts[INDEX_SIZE];
@@ -112,7 +117,8 @@ class Log {
         void write_to_file(uint32_t size); // Write <size> bytes from active data buffer to log file
 
     public:
-        Log(); // Initialize the log
+        Log(bool has_metafile); // Initialize the log
+        Log(uint8_t* file, bool has_metafile); // Initialize the log with the given file
         Log(uint8_t* metafile, uint8_t* indexfile, uint8_t* file); // Initialize the log (from a metafile) held in file pointed to by the second argument
         void log(T* data); // Log data (implemented differently for different types), attach timestamp in function
         void log(T* data, time_t timestamp); // Log data with a given timestamp in the file

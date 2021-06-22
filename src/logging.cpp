@@ -40,11 +40,6 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
     // Return invalid type of log slice when boundaries are not ordered
     if (end_ts < start_ts) return log_slice_t();
 
-    uint32_t index_entries = indexfile_size / INDEX_ENTRY_SIZE; // Number of index entries
-
-    uint32_t first_index = 0;
-    uint32_t second_index = index_entries - 1;
-
     // Find first timestamp value in the log file
     time_t first_ts;
     std::memcpy(&first_ts, file, sizeof(time_t));
@@ -62,11 +57,27 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
     // Adjust end_ts if it is out of bounds
     end_ts = end_ts > last_ts ? last_ts : end_ts;
 
+    uint32_t start_location, end_location;  // Locations of the log entries containing start_ts and end_ts, respectively, end_ts is non-inclusive (in the log file)
+
+    // If there is no indexfile
+    if (indexfile == NULL) {
+        start_location = find_entry<T,U>(file, start_ts, file_size, false);
+        end_location = find_entry<T,U>(file, end_ts, file_size, true);
+
+        log_slice_t slice;
+        slice.start_location = start_location;
+        slice.end_location = end_location;
+        return slice;
+    }
+
+    uint32_t index_entries = indexfile_size / INDEX_ENTRY_SIZE; // Number of index entries
+
+    uint32_t first_index = 0;
+    uint32_t second_index = index_entries - 1;
+
     // Find timestamp at second_index of indexfile
     time_t second_ts;
     std::memcpy(&second_ts, indexfile + second_index * INDEX_ENTRY_SIZE, sizeof(time_t));
-
-    uint32_t start_location, end_location;  // Locations of the log entries containing start_ts and end_ts, respectively, end_ts is non-inclusive (in the log file)
 
     bool done = false;
     while (!done) {
@@ -157,13 +168,28 @@ uint32_t Log<T,U>::min_queue_size() {
 }
 
 template <class T, class U>
-Log<T,U>::Log() {
+Log<T,U>::Log(bool has_metafile) {
     this->data_queue = (uint8_t *)malloc(this->min_queue_size());
     this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
 
-    this->init_metafile();
-    this->init_indexfile();
+    if (has_metafile) {
+        this->init_metafile();
+        this->init_indexfile();
+    }
     this->init_file();
+}
+
+template <class T, class U>
+Log<T,U>::Log(uint8_t* file, bool has_metafile) {
+    this->file = file;
+
+    this->data_queue = (uint8_t *)malloc(this->min_queue_size());
+    this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
+
+    if (has_metafile) {
+        this->init_metafile();
+        this->init_indexfile();
+    }
 }
 
 template <class T, class U>
@@ -172,7 +198,6 @@ Log<T,U>::Log(uint8_t* metafile, uint8_t* indexfile, uint8_t* file) {
     this->indexfile = indexfile;
     this->file = file;
     this->deserialize_meta_info(this->metafile);
-    // this->deserialize_index(this->indexfile, this->indexfile_size);
 
     this->data_queue = (uint8_t *)malloc(this->min_queue_size());
     this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
@@ -190,7 +215,7 @@ void Log<T,U>::log(T* data, time_t timestamp) {
             this->file_entries++;
 
             // Create an index entry if enough log entries have been added to the log file
-            if (this->file_entries % INDEX_DENSITY == 1) {
+            if (this->indexfile != NULL && this->file_entries % INDEX_DENSITY == 1) {
                 this->index_ts[this->index_entries] = this->last_timestamp;
                 this->index_pos[this->index_entries] = this->file_size - this->queue_len;
                 this->index_entries++;
@@ -294,21 +319,6 @@ uint8_t* Log<T,U>::serialize_meta_info() {
     return this->metafile;
 }
 
-/*
-template <class T, class U>
-void Log<T,U>::deserialize_index(uint8_t* indexfile, uint32_t indexfile_size) {
-    uint8_t* indexfile_pos = indexfile;
-    uint32_t entries = indexfile_size / INDEX_ENTRY_SIZE;
-
-    for (uint32_t i = 0; i < entries; i++) {
-        std::memcpy(this->index_ts + i, indexfile_pos, sizeof(time_t));
-        std::memcpy(this->index_pos + i, indexfile_pos + sizeof(time_t), sizeof(uint32_t));
-        indexfile_pos += INDEX_ENTRY_SIZE;
-        this->index_entries++;
-    }
-}
-*/
-
 template <class T, class U>
 uint8_t* Log<T,U>::serialize_index() {
     uint8_t* indexfile_pos = this->indexfile + this->indexfile_size;
@@ -332,6 +342,8 @@ uint32_t Log<T,U>::get_file_size() {
 
 template <class T, class U>
 void Log<T,U>::save_meta_info() {
+    if (this->metafile == NULL) return;
+
     this->serialize_index();
     this->serialize_meta_info();
 }

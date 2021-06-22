@@ -8,7 +8,7 @@
 static void test1() {
     int logsize = 1024;
 
-    Log<int, uint8_t> logi = Log<int,uint8_t>();
+    Log<int, uint8_t> logi = Log<int,uint8_t>(false);
 
     int datapoints[] = {12, 13, 14, 15, 2000, 3333, 4690};
     time_t timestamps[] = {1603723663, 1603723700, 1603723720, 1603724000, 1603724000, 1603724100, 1603724900};
@@ -25,7 +25,7 @@ static void test2() {
     double result[360];
     time_t timestamp = 1603723663;
 
-    Log<double, uint8_t> logi = Log<double, uint8_t>();
+    Log<double, uint8_t> logi = Log<double, uint8_t>(false);
 
     // Save sine data (to be plotted later)
     for (uint16_t time = 0; time < 360; time++) {
@@ -53,7 +53,7 @@ static void test3() {
 }
 
 static void test4() {
-    Log<int, uint8_t> logi = Log<int, uint8_t>();
+    Log<int, uint8_t> logi = Log<int, uint8_t>(false);
 
     int data[100];
     time_t timestamp = 1603723663;
@@ -202,6 +202,30 @@ static void test7() {
     }
 }
 
+static void test8() {
+    // Test optionality of indexfile
+    uint8_t file[1024];
+    Log<int, uint8_t> logi = Log<int, uint8_t>(file, false);  // Special constructor
+
+    int data[100];
+    time_t timestamp = 1603730000;
+
+    // No index entries should be created after this loop
+    for (uint8_t i = 0; i < 100; i++) {
+        data[i] = i*100;
+        logi.log(data + i, timestamp + i*64);
+    }
+
+    // Should have no effect
+    logi.save_meta_info();
+
+    // Should work as expected
+    log_slice_t slice1 = log_slice<int, uint8_t>(file, logi.get_file_size(), NULL, 0, 1603732103, 1603735077);  // Expected {232, 580}
+    log_slice_t slice2 = log_slice<int, uint8_t>(file, logi.get_file_size(), NULL, 0, 1603730261, 1603730619);  // Expected {29, 87}
+    log_slice_t slice3 = log_slice<int, uint8_t>(file, logi.get_file_size(), NULL, 0, 1603730901, 1603736130);  // Expected {87, 696}
+    log_slice_t slice4 = log_slice<int, uint8_t>(file, logi.get_file_size(), NULL, 0, 1603734070, 1603734098);  // Expected {435, 493}
+}
+
 int main() {
     // test1();
     // test2();
@@ -209,7 +233,8 @@ int main() {
     // test4();
     // test5();
     // test6();
-    test7();
+    // test7();
+    test8();
 
     Success_Handler();
 }
