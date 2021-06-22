@@ -12,12 +12,9 @@
 
 // Smaller stuff:
 // TODO: use references
-// TODO: mis juhtub, kui entry saab täis, aga resolution pole veel täis? Kas see on võimalik?
 // TODO: flush funktsioon tagasi tuua
 
-// TODO: slice'des, kui  slice otspunktid asuvad samas entry's, ära tee teise otspunkti otsingut uuesti läbi
-// TODO: INDEX_ENTRY_SIZE igale poole
-// TODO: 4 väiksemat (üleval), 3 suuremat (all)
+// TODO: 1 väiksem (üleval), 3 suuremat (all)
 
 // NOTE: metafile ülekirjutamine on ok
 
@@ -89,7 +86,6 @@ class Log {
         uint32_t index_pos[INDEX_SIZE];
 
         // Queues
-        // TODO: end log with how many datapoints under last queue item?
         uint8_t* data_queue;
         uint8_t* double_buffer;
         uint32_t queue_len = 0; // How many bytes have been added to the queue
