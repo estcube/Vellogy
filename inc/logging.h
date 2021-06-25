@@ -12,10 +12,8 @@
 
 // Smaller stuff:
 // TODO: use references
-// TODO: flush funktsioon tagasi tuua
-// TODO: file allocation
 
-// TODO: väiksemad asjad (üleval), 1 küsimus (kas metainfo tagastamist kui sellist on vaja? või piisab save_meta_info f-nist), 2 suuremat (all)
+// TODO: väiksemad asjad (üleval), 2 küsimust (kas metainfo tagastamist kui sellist on vaja? või piisab save_meta_info f-nist, vt alla), 1 suurem (all)
 /*
 Optional meta- and indexfile:
 Eraldi alamklass indeksiga ja indeksita logi jaoks?
@@ -41,6 +39,10 @@ Eraldi alamklass indeksiga ja indeksita logi jaoks?
 #define INDEX_SIZE 16
 // Size of one index entry
 #define INDEX_ENTRY_SIZE (sizeof(time_t) + sizeof(uint32_t))
+// Default file sizes
+#define METAFILE_SIZE (sizeof(log_decode_info_t) + 3 * sizeof(uint32_t))
+#define DEFAULT_INDEXFILE_SIZE 256
+#define DEFAULT_FILE_SIZE 1024
 
 
 enum compression_method_t {
@@ -106,27 +108,24 @@ class Log {
         void write_to_queue_timedelta(U timedelta); // Write timedelta in byte form to the data queue
         void write_to_queue_data_added(); // Write current data_added in byte form to the data queue
         void switch_buffers(); // Switch data and double buffer
+        void end_entry(); // Manually close the current entry (write entry to file)
 
         void deserialize_meta_info(uint8_t* metafile);
         uint8_t* serialize_meta_info();
-        void deserialize_index(uint8_t* indexfile, uint32_t indexfile_size);
         uint8_t* serialize_index();
-        void init_metafile(); // Initialize the metafile
-        void init_indexfile(); // Initialize the indexfile
-        void init_file(); // Initialize the file holding the logs
         void write_to_file(uint32_t size); // Write <size> bytes from active data buffer to log file
 
     public:
-        Log(bool has_metafile); // Initialize the log
-        Log(uint8_t* file, bool has_metafile); // Initialize the log with the given file
+        Log(uint8_t* file); // Initialize the log with the given file (no meta- and indexfile)
         Log(uint8_t* metafile, uint8_t* indexfile, uint8_t* file); // Initialize the log (from a metafile) held in file pointed to by the second argument
         void log(T* data); // Log data (implemented differently for different types), attach timestamp in function
         void log(T* data, time_t timestamp); // Log data with a given timestamp in the file
 
         uint32_t get_file_size(); // Get size of log file in bytes
         void save_meta_info(); // Write current state to metafile
+        void flush(); // Write all datapoints in volatile memory to file
 
-        Log<T,U> slice(time_t starttime, time_t endtime); // Read an array of log entries from the chosen time period
+        log_slice_t slice(time_t start_ts, time_t end_ts); // Read an array of log entries from the chosen time period
         Log<T,U> compress(compression_method_t method); // Compress log with the chosen method
         Log<T,U> merge(Log<T,U> otherLog); // Merge two logs and create a new log
 };

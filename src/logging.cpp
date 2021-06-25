@@ -157,39 +157,11 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
 }
 
 template <class T, class U>
-uint32_t Log<T,U>::min_queue_size() {
-    uint32_t queue_size = 0;
-
-    queue_size += sizeof(time_t); // Size of timestamp
-    queue_size += sizeof(U); // Size of data_added
-    queue_size += (1 << (sizeof(U) * BYTE_SIZE)) * (sizeof(T) + sizeof(U)); // 2^{size_of_U_in_bits} * size_of_one_datapoint_with_timedelta
-
-    return queue_size;
-}
-
-template <class T, class U>
-Log<T,U>::Log(bool has_metafile) {
-    this->data_queue = (uint8_t *)malloc(this->min_queue_size());
-    this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
-
-    if (has_metafile) {
-        this->init_metafile();
-        this->init_indexfile();
-    }
-    this->init_file();
-}
-
-template <class T, class U>
-Log<T,U>::Log(uint8_t* file, bool has_metafile) {
+Log<T,U>::Log(uint8_t* file) {
     this->file = file;
 
     this->data_queue = (uint8_t *)malloc(this->min_queue_size());
     this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
-
-    if (has_metafile) {
-        this->init_metafile();
-        this->init_indexfile();
-    }
 }
 
 template <class T, class U>
@@ -210,19 +182,7 @@ void Log<T,U>::log(T* data, time_t timestamp) {
     if (!this->last_timestamp || timestamp - this->last_timestamp >= (1 << (sizeof(U) * BYTE_SIZE)) || this->data_added >= (1 << (sizeof(U) * BYTE_SIZE)) - 1) {
         // If one timestamp resolution is full, write to queue how many datapoints were recorded under the previous timestamp
         if (this->last_timestamp) {
-            this->write_to_queue_data_added();
-            // A new entry was written to the log file
-            this->file_entries++;
-
-            // Create an index entry if enough log entries have been added to the log file
-            if (this->indexfile != NULL && this->file_entries % INDEX_DENSITY == 1) {
-                this->index_ts[this->index_entries] = this->last_timestamp;
-                this->index_pos[this->index_entries] = this->file_size - this->queue_len;
-                this->index_entries++;
-            }
-
-            // Reset queue length to 0
-            this->queue_len = 0;
+            this->end_entry();
         }
         // Create a new timestamp and write it to queue
         this->last_timestamp = timestamp;
@@ -251,6 +211,49 @@ void Log<T,U>::log(T* data, time_t timestamp) {
 }
 
 template <class T, class U>
+uint32_t Log<T,U>::get_file_size() {
+    return this->file_size;
+}
+
+template <class T, class U>
+void Log<T,U>::save_meta_info() {
+    if (this->metafile == NULL) return;
+
+    this->serialize_index();
+    this->serialize_meta_info();
+}
+
+template <class T, class U>
+void Log<T,U>::flush() {
+    this->end_entry();
+    this->last_timestamp = 0;
+}
+
+template <class T, class U>
+log_slice_t Log<T,U>::slice(time_t start_ts, time_t end_ts) {
+    return log_slice<T,U>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
+}
+
+/******** Private functions ********/
+
+template <class T, class U>
+uint32_t Log<T,U>::min_queue_size() {
+    uint32_t queue_size = 0;
+
+    queue_size += sizeof(time_t); // Size of timestamp
+    queue_size += sizeof(U); // Size of data_added
+    queue_size += (1 << (sizeof(U) * BYTE_SIZE)) * (sizeof(T) + sizeof(U)); // 2^{size_of_U_in_bits} * size_of_one_datapoint_with_timedelta
+
+    return queue_size;
+}
+
+template <class T, class U>
+void Log<T,U>::write_to_queue(auto var_address, uint8_t len) {
+    std::memcpy(this->data_queue + this->queue_len, var_address, len);
+    this->queue_len += len;
+}
+
+template <class T, class U>
 void Log<T,U>::write_to_queue_timestamp() {
     this->write_to_queue(&(this->last_timestamp), sizeof(time_t));
 }
@@ -271,13 +274,6 @@ void Log<T,U>::write_to_queue_data_added() {
     this->switch_buffers();
 }
 
-
-template <class T, class U>
-void Log<T,U>::write_to_queue(auto var_address, uint8_t len) {
-    std::memcpy(this->data_queue + this->queue_len, var_address, len);
-    this->queue_len += len;
-}
-
 template <class T, class U>
 void Log<T,U>::switch_buffers() {
     // Switch data queue and double buffer
@@ -287,6 +283,23 @@ void Log<T,U>::switch_buffers() {
 
     // Write data to file
     this->write_to_file(this->queue_len);
+}
+
+template <class T, class U>
+void Log<T,U>::end_entry() {
+    this->write_to_queue_data_added();
+    // A new entry was written to the log file
+    this->file_entries++;
+
+    // Create an index entry if enough log entries have been added to the log file
+    if (this->indexfile != NULL && this->file_entries % INDEX_DENSITY == 1) {
+        this->index_ts[this->index_entries] = this->last_timestamp;
+        this->index_pos[this->index_entries] = this->file_size - this->queue_len;
+        this->index_entries++;
+    }
+
+    // Reset queue length to 0
+    this->queue_len = 0;
 }
 
 template <class T, class U>
@@ -333,37 +346,6 @@ uint8_t* Log<T,U>::serialize_index() {
     this->index_entries = 0;
 
     return this->indexfile;
-}
-
-template <class T, class U>
-uint32_t Log<T,U>::get_file_size() {
-    return this->file_size;
-}
-
-template <class T, class U>
-void Log<T,U>::save_meta_info() {
-    if (this->metafile == NULL) return;
-
-    this->serialize_index();
-    this->serialize_meta_info();
-}
-
-// Dummy
-template <class T, class U>
-void Log<T,U>::init_metafile() {
-    return;
-}
-
-// Dummy
-template <class T, class U>
-void Log<T,U>::init_indexfile() {
-    return;
-}
-
-// Dummy
-template <class T, class U>
-void Log<T,U>::init_file() {
-    return;
 }
 
 // Dummy

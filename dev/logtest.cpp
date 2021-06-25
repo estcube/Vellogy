@@ -6,9 +6,8 @@
 #define PI 3.14159265
 
 static void test1() {
-    int logsize = 1024;
-
-    Log<int, uint8_t> logi = Log<int,uint8_t>(false);
+    uint8_t file[1024];
+    Log<int, uint8_t> logi = Log<int,uint8_t>(file);
 
     int datapoints[] = {12, 13, 14, 15, 2000, 3333, 4690};
     time_t timestamps[] = {1603723663, 1603723700, 1603723720, 1603724000, 1603724000, 1603724100, 1603724900};
@@ -25,7 +24,8 @@ static void test2() {
     double result[360];
     time_t timestamp = 1603723663;
 
-    Log<double, uint8_t> logi = Log<double, uint8_t>(false);
+    uint8_t file[1024];
+    Log<double, uint8_t> logi = Log<double, uint8_t>(file);
 
     // Save sine data (to be plotted later)
     for (uint16_t time = 0; time < 360; time++) {
@@ -53,7 +53,8 @@ static void test3() {
 }
 
 static void test4() {
-    Log<int, uint8_t> logi = Log<int, uint8_t>(false);
+    uint8_t file[1024];
+    Log<int, uint8_t> logi = Log<int, uint8_t>(file);
 
     int data[100];
     time_t timestamp = 1603723663;
@@ -65,6 +66,8 @@ static void test4() {
 }
 
 static void test5() {
+    // Test restoring log from existing metafile, indexfile and file
+
     // Metafile containing random decode info (and space for additional index entries)
     uint8_t metafile[200] = {
         // decode info
@@ -104,6 +107,8 @@ static void test5() {
 }
 
 static void test6() {
+    // Test log slicing
+
     uint8_t metafile[200] = {
         // decode info (random)
         0x00, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x01, 0x00,
@@ -145,12 +150,16 @@ static void test6() {
     // Random timestamp tests:
     // Entries in different log and index entries
     log_slice_t slice4 = log_slice<int, uint8_t>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603732103, 1603735077);  // Expected {232, 580}
+    log_slice_t alt4 = logi.slice(1603732103, 1603735077);
     // Entries in different log, but same index entries
     log_slice_t slice5 = log_slice<int, uint8_t>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730261, 1603730619);  // Expected {29, 87}
+    log_slice_t alt5 = logi.slice(1603730261, 1603730619);
     // Entries in the same log (and index) entry
     log_slice_t slice6 = log_slice<int, uint8_t>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603730901, 1603736130);  // Expected {87, 696}
+    log_slice_t alt6 = logi.slice(1603730901, 1603736130);
     // Entries in consecutive log entries
     log_slice_t slice7 = log_slice<int, uint8_t>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603734070, 1603734098);  // Expected {435, 493}
+    log_slice_t alt7 = logi.slice(1603734070, 1603734098);
 
     // Edge cases
     // Both timestamps in the very last entry of the log file
@@ -178,6 +187,8 @@ static void test6() {
 }
 
 static void test7() {
+    // Test repeating timestamps
+
     uint8_t metafile[200] = {
         // decode info (random)
         0x00, 0x00, 0x00, 0x10, 0x10, 0x00, 0x00, 0x00, 0x02, 0x02, 0x02, 0x02, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x01, 0x00,
@@ -189,7 +200,7 @@ static void test7() {
         0x00, 0x00, 0x00, 0x00
     };
     uint8_t indexfile[128];
-    uint8_t file[1024];
+    uint8_t file[1536];
     Log<int, uint8_t> logi = Log<int, uint8_t>(metafile, indexfile, file);
 
     int data[300];
@@ -204,8 +215,9 @@ static void test7() {
 
 static void test8() {
     // Test optionality of indexfile
+
     uint8_t file[1024];
-    Log<int, uint8_t> logi = Log<int, uint8_t>(file, false);  // Special constructor
+    Log<int, uint8_t> logi = Log<int, uint8_t>(file);  // Special constructor
 
     int data[100];
     time_t timestamp = 1603730000;
@@ -226,6 +238,30 @@ static void test8() {
     log_slice_t slice4 = log_slice<int, uint8_t>(file, logi.get_file_size(), NULL, 0, 1603734070, 1603734098);  // Expected {435, 493}
 }
 
+static void test9() {
+    // Test flushing log when entry is not yet full
+
+    uint8_t file[1024];
+    Log<int, uint8_t> logi = Log<int, uint8_t>(file);
+
+    int data[100];
+    time_t timestamp = 1603723700;
+
+    for (uint16_t i = 0; i < 50; i++) {
+        data[i] = i*100;
+        logi.log(data + i, timestamp + i * 64);
+    }
+
+    // After this, a new entry with only 2 datapoints should be written to log file
+    logi.flush();
+
+    // After this loop, 12 new entries should be created and volatile memory should hold 2 datapoints
+    for (uint16_t i = 50; i < 100; i++) {
+        data[i] = i*100;
+        logi.log(data + i, timestamp + i * 64);
+    }
+}
+
 int main() {
     // test1();
     // test2();
@@ -234,7 +270,8 @@ int main() {
     // test5();
     // test6();
     // test7();
-    test8();
+    // test8();
+    test9();
 
     Success_Handler();
 }
