@@ -1,3 +1,4 @@
+#include <FreeRTOS.h>
 #include "logging.h"
 
 #include "mt25ql_driver.h"
@@ -5,18 +6,26 @@
 #include "echal_rcc.h"
 #include "echal_gpio.h"
 
-template<class T, class U>
+#ifndef LOGGING_CFG_H
+#define PATH_LEN 4 // Length of filepaths
+#define FORMATSTRING_LEN 4 // Length of formatstrings
+#define INDEX_DENSITY 5 // After how many log entries is an index object created
+#define INDEX_BUFFER_SIZE 16 // How much index entries can one index hold
+#define INDEX_ENTRY_SIZE (sizeof(time_t) + sizeof(uint32_t)) // Size of one index entry
+#endif
+
+template<class T>
 uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding) {
     uint32_t reading_location = search_location;
 
     bool done = false;
     while (!done) {
-        reading_location -= sizeof(U);
-        U data_added;
-        std::memcpy(&data_added, file + reading_location, sizeof(U));
+        reading_location -= sizeof(uint8_t);
+        uint8_t data_added;
+        std::memcpy(&data_added, file + reading_location, sizeof(uint8_t));
 
         // Let's jump ahead and read the timestamp in the beginning of the entry
-        uint32_t data_size = (data_added + 1)*(sizeof(T) + sizeof(U));
+        uint32_t data_size = (data_added + 1)*(sizeof(T) + sizeof(uint8_t));
         reading_location -= data_size + sizeof(time_t);
         time_t entry_ts;
         std::memcpy(&entry_ts, file + reading_location, sizeof(time_t));
@@ -24,7 +33,7 @@ uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location, b
         // The timestamp we are looking for is in this entry
         if (timestamp >= entry_ts) {
             // if we need to find the succeeding entry to the one containing the timestamp instead
-            if (succeeding) reading_location += sizeof(time_t) + data_size + sizeof(U);
+            if (succeeding) reading_location += sizeof(time_t) + data_size + sizeof(uint8_t);
 
             // Exit search loop
             done = true;
@@ -35,10 +44,10 @@ uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location, b
 }
 
 // TODO: kas slice lugemine peaks toimuma seotult logi objektiga või eraldi? Threading?
-template<class T, class U>
+template<class T>
 log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts) {
     // Return invalid type of log slice when boundaries are not ordered
-    if (end_ts < start_ts) return log_slice_t();
+    if (end_ts < start_ts) std::swap(start_ts, end_ts);
 
     // Find first timestamp value in the log file
     time_t first_ts;
@@ -48,11 +57,11 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
 
     // Find last timestamp value in the log file
     time_t last_ts;
-    U last_data_added;
-    std::memcpy(&last_data_added, file + file_size - sizeof(U), sizeof(U));
-    U last_timedelta;
-    std::memcpy(&last_timedelta, file + file_size - 2 * sizeof(U), sizeof(U));
-    std::memcpy(&last_ts, file + file_size - sizeof(U) - (last_data_added + 1)*(sizeof(T) + sizeof(U)) - sizeof(time_t), sizeof(time_t));
+    uint8_t last_data_added;
+    std::memcpy(&last_data_added, file + file_size - sizeof(uint8_t), sizeof(uint8_t));
+    uint8_t last_timedelta;
+    std::memcpy(&last_timedelta, file + file_size - 2 * sizeof(uint8_t), sizeof(uint8_t));
+    std::memcpy(&last_ts, file + file_size - sizeof(uint8_t) - (last_data_added + 1)*(sizeof(T) + sizeof(uint8_t)) - sizeof(time_t), sizeof(time_t));
     last_ts += last_timedelta;
     // Adjust end_ts if it is out of bounds
     end_ts = end_ts > last_ts ? last_ts : end_ts;
@@ -61,12 +70,10 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
 
     // If there is no indexfile
     if (indexfile == NULL) {
-        start_location = find_entry<T,U>(file, start_ts, file_size, false);
-        end_location = find_entry<T,U>(file, end_ts, file_size, true);
+        start_location = find_entry<T>(file, start_ts, file_size, false);
+        end_location = find_entry<T>(file, end_ts, file_size, true);
 
-        log_slice_t slice;
-        slice.start_location = start_location;
-        slice.end_location = end_location;
+        log_slice_t slice = { .file = file, .start_location = start_location, .end_location = end_location };
         return slice;
     }
 
@@ -86,13 +93,13 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
         std::memcpy(&middle_ts, indexfile + middle_index * INDEX_ENTRY_SIZE, sizeof(time_t));
 
         if (first_index == second_index) {
-            start_location = find_entry<T,U>(file, start_ts, file_size, false);
+            start_location = find_entry<T>(file, start_ts, file_size, false);
             first_index = middle_index;  // Actually it already is middle_index, but for clarity
             done = true;
         } else if (second_index - first_index == 1) {
             uint32_t search_location = file_size;
             if (start_ts < second_ts) std::memcpy(&search_location, indexfile + second_index * INDEX_ENTRY_SIZE + sizeof(time_t), sizeof(uint32_t));
-            start_location = find_entry<T,U>(file, start_ts, search_location, false);
+            start_location = find_entry<T>(file, start_ts, search_location, false);
             first_index = middle_index;  // Actually it already is middle_index, but for clarity
             done = true;
         } else if (start_ts == middle_ts) {  // Extremely unlikely case
@@ -112,11 +119,9 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
     if (end_ts < second_ts) {  // If start_ts and end_ts are in the same index entry
         uint32_t search_location;
         std::memcpy(&search_location, indexfile + second_index * INDEX_ENTRY_SIZE + sizeof(time_t), sizeof(uint32_t));
-        end_location = find_entry<T,U>(file, end_ts, search_location, true);
+        end_location = find_entry<T>(file, end_ts, search_location, true);
 
-        log_slice_t slice;
-        slice.start_location = start_location;
-        slice.end_location = end_location;
+        log_slice_t slice = { .file = file, .start_location = start_location, .end_location = end_location };
         return slice;
     }
 
@@ -129,18 +134,18 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
         std::memcpy(&middle_ts, indexfile + middle_index * INDEX_ENTRY_SIZE, sizeof(time_t));
 
         if (first_index == second_index) {
-            end_location = find_entry<T,U>(file, end_ts, file_size, true);
+            end_location = find_entry<T>(file, end_ts, file_size, true);
             done = true;
         } else if (second_index - first_index == 1) {
             uint32_t search_location = file_size;
             if (end_ts < second_ts) std::memcpy(&search_location, indexfile + second_index * INDEX_ENTRY_SIZE + sizeof(time_t), sizeof(uint32_t));
-            end_location = find_entry<T,U>(file, end_ts, search_location, true);
+            end_location = find_entry<T>(file, end_ts, search_location, true);
             done = true;
         } else if (end_ts == middle_ts) {  // Extremely unlikely case
             uint32_t search_location;
             // end_location is the location of the next timestamp after middle_ts, because it is non-inclusive
             std::memcpy(&search_location, indexfile + (middle_index + 1) * INDEX_ENTRY_SIZE + sizeof(time_t), sizeof(uint32_t));
-            end_location = find_entry<T,U>(file, end_ts, search_location, true);
+            end_location = find_entry<T>(file, end_ts, search_location, true);
             done = true;
         } else if (end_ts > middle_ts) {
             first_index = middle_index;
@@ -150,36 +155,38 @@ log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uin
         }
     }
 
-    log_slice_t slice;
-    slice.start_location = start_location;
-    slice.end_location = end_location;
+    log_slice_t slice = { .file = file, .start_location = start_location, .end_location = end_location };
     return slice;
 }
 
-template <class T, class U>
-Log<T,U>::Log(uint8_t* file) {
+template <class T>
+Log<T>::Log(uint8_t* file, int8_t resolution) {
     this->file = file;
+    this->resolution = resolution;
 
-    this->data_queue = (uint8_t *)malloc(this->min_queue_size());
-    this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
+    this->data_queue = (uint8_t *)pvPortMalloc(this->min_queue_size());
+    this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
 }
 
-template <class T, class U>
-Log<T,U>::Log(uint8_t* metafile, uint8_t* indexfile, uint8_t* file) {
+template <class T>
+Log<T>::Log(uint8_t* metafile, uint8_t* indexfile, uint8_t* file, int8_t resolution) {
     this->metafile = metafile;
     this->indexfile = indexfile;
     this->file = file;
+    this->resolution = resolution;
     this->deserialize_meta_info(this->metafile);
 
-    this->data_queue = (uint8_t *)malloc(this->min_queue_size());
-    this->double_buffer = (uint8_t *)malloc(this->min_queue_size());
+    this->data_queue = (uint8_t *)pvPortMalloc(this->min_queue_size());
+    this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
 }
 
-template <class T, class U>
-void Log<T,U>::log(T* data, time_t timestamp) {
+template <class T>
+void Log<T>::log(T& data, time_t timestamp) {
     bool new_entry = false;
 
-    if (!this->last_timestamp || timestamp - this->last_timestamp >= (1 << (sizeof(U) * BYTE_SIZE)) || this->data_added >= (1 << (sizeof(U) * BYTE_SIZE)) - 1) {
+    if (!this->last_timestamp
+        || this->scale_timedelta(timestamp - this->last_timestamp) >= (1 << (sizeof(uint8_t) * CHAR_BIT))
+        || this->data_added >= (1 << (sizeof(uint8_t) * CHAR_BIT)) - 1) {
         // If one timestamp resolution is full, write to queue how many datapoints were recorded under the previous timestamp
         if (this->last_timestamp) {
             this->end_entry();
@@ -193,10 +200,11 @@ void Log<T,U>::log(T* data, time_t timestamp) {
 
     // Write datapoint to queue
     this->write_to_queue_datapoint(data);
-    U time_diff = timestamp - this->last_timestamp;
+    // If time_diff was bigger than 8 bits, then a new entry was created above, so this cast is safe
+    uint8_t time_diff = (uint8_t) this->scale_timedelta(timestamp - this->last_timestamp);
     this->write_to_queue_timedelta(time_diff);
 
-    // The maximum number of datapoints under one timestamp is equal to maximum number of different deltas, 2^(size of U in bits)
+    // The maximum number of datapoints under one timestamp is equal to maximum number of different deltas, 2^(size of uint8_t in bits)
     // To save memory, the number of datapoints written to the end of the entry is one less than there actually are
     // For example, 1 datapoint is written as 0, 2 as 1 and so on
     // This works because an entry with only a timestamp and 0 datapoints is impossible
@@ -210,72 +218,84 @@ void Log<T,U>::log(T* data, time_t timestamp) {
     this->data_added++;
 }
 
-template <class T, class U>
-uint32_t Log<T,U>::get_file_size() {
+template <class T>
+uint32_t Log<T>::get_file_size() {
     return this->file_size;
 }
 
-template <class T, class U>
-void Log<T,U>::save_meta_info() {
+template <class T>
+void Log<T>::save_meta_info() {
     if (this->metafile == NULL) return;
-
-    this->serialize_index();
     this->serialize_meta_info();
 }
 
-template <class T, class U>
-void Log<T,U>::flush() {
+template <class T>
+void Log<T>::flush() {
     this->end_entry();
     this->last_timestamp = 0;
 }
 
-template <class T, class U>
-log_slice_t Log<T,U>::slice(time_t start_ts, time_t end_ts) {
-    return log_slice<T,U>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
+template <class T>
+log_slice_t Log<T>::slice(time_t start_ts, time_t end_ts) {
+    return log_slice<T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
 }
 
 /******** Private functions ********/
 
-template <class T, class U>
-uint32_t Log<T,U>::min_queue_size() {
+template <class T>
+uint32_t Log<T>::min_queue_size() {
     uint32_t queue_size = 0;
 
     queue_size += sizeof(time_t); // Size of timestamp
-    queue_size += sizeof(U); // Size of data_added
-    queue_size += (1 << (sizeof(U) * BYTE_SIZE)) * (sizeof(T) + sizeof(U)); // 2^{size_of_U_in_bits} * size_of_one_datapoint_with_timedelta
+    queue_size += sizeof(uint8_t); // Size of data_added
+    queue_size += (1 << (sizeof(uint8_t) * CHAR_BIT)) * (sizeof(T) + sizeof(uint8_t)); // 2^{size_of_uint8_t_in_bits} * size_of_one_datapoint_with_timedelta
 
     return queue_size;
 }
 
-template <class T, class U>
-void Log<T,U>::write_to_queue(auto var_address, uint8_t len) {
+template <class T>
+uint16_t Log<T>::scale_timedelta(uint64_t timedelta) {
+    // Relative precision: how much less precise is the timedelta we can log compared to the actual timestamp resolution
+    // For example, if TS_RESOLUTION is -4 and this->resolution is -2 and timestamp subseconds are in decimal system,
+    // then timedeltas actually saved are 100 times less precise than the timestamp type allows
+    uint32_t rel_precision = pow(TS_BASE, abs(this->resolution - TS_RESOLUTION));
+
+    // For example, if timedelta is 7863 and rel_precision is 100, then lower_bound is 7800 and upper_bound is 7900
+    uint16_t lower_bound = timedelta / rel_precision * rel_precision;
+    uint16_t upper_bound = (timedelta / rel_precision + 1) * rel_precision;
+
+    return (upper_bound - timedelta < timedelta - lower_bound ? upper_bound : lower_bound) / rel_precision;
+}
+
+template <class T>
+void Log<T>::write_to_queue(auto var_address, uint8_t len) {
     std::memcpy(this->data_queue + this->queue_len, var_address, len);
     this->queue_len += len;
 }
 
-template <class T, class U>
-void Log<T,U>::write_to_queue_timestamp() {
+template <class T>
+void Log<T>::write_to_queue_timestamp() {
     this->write_to_queue(&(this->last_timestamp), sizeof(time_t));
 }
 
-template <class T, class U>
-void Log<T,U>::write_to_queue_datapoint(T* datapoint) {
-    this->write_to_queue(datapoint, sizeof(T));
+template <class T>
+void Log<T>::write_to_queue_datapoint(T& datapoint) {
+    this->write_to_queue(&datapoint, sizeof(T));
 }
 
-template <class T, class U>
-void Log<T,U>::write_to_queue_timedelta(U timedelta) {
-    this->write_to_queue(&timedelta, sizeof(U));
+template <class T>
+void Log<T>::write_to_queue_timedelta(uint8_t timedelta) {
+    this->write_to_queue(&timedelta, sizeof(uint8_t));
 }
 
-template <class T, class U>
-void Log<T,U>::write_to_queue_data_added() {
-    this->write_to_queue(&(this->data_added), sizeof(U));
+template <class T>
+void Log<T>::write_to_queue_data_added() {
+    this->write_to_queue(&(this->data_added), sizeof(uint8_t));
     this->switch_buffers();
 }
 
-template <class T, class U>
-void Log<T,U>::switch_buffers() {
+template <class T>
+void Log<T>::switch_buffers() {
     // Switch data queue and double buffer
     uint8_t* temp = this->data_queue;
     this->data_queue = this->double_buffer;
@@ -285,25 +305,23 @@ void Log<T,U>::switch_buffers() {
     this->write_to_file(this->queue_len);
 }
 
-template <class T, class U>
-void Log<T,U>::end_entry() {
+template <class T>
+void Log<T>::end_entry() {
     this->write_to_queue_data_added();
     // A new entry was written to the log file
     this->file_entries++;
 
-    // Create an index entry if enough log entries have been added to the log file
+    // Create an index entry (write it to indexfile) if enough log entries have been added to the log file
     if (this->indexfile != NULL && this->file_entries % INDEX_DENSITY == 1) {
-        this->index_ts[this->index_entries] = this->last_timestamp;
-        this->index_pos[this->index_entries] = this->file_size - this->queue_len;
-        this->index_entries++;
+        this->write_to_index(this->last_timestamp, this->file_size - this->queue_len);
     }
 
     // Reset queue length to 0
     this->queue_len = 0;
 }
 
-template <class T, class U>
-void Log<T,U>::deserialize_meta_info(uint8_t* metafile) {
+template <class T>
+void Log<T>::deserialize_meta_info(uint8_t* metafile) {
     uint8_t* metafile_pos = metafile;
 
     std::memcpy(&(this->decode_info), metafile_pos, sizeof(this->decode_info));
@@ -316,8 +334,8 @@ void Log<T,U>::deserialize_meta_info(uint8_t* metafile) {
     metafile_pos += sizeof(this->indexfile_size);
 }
 
-template <class T, class U>
-uint8_t* Log<T,U>::serialize_meta_info() {
+template <class T>
+uint8_t* Log<T>::serialize_meta_info() {
     uint8_t* metafile_pos = this->metafile;
 
     std::memcpy(metafile_pos, &(this->decode_info), sizeof(this->decode_info));
@@ -332,35 +350,26 @@ uint8_t* Log<T,U>::serialize_meta_info() {
     return this->metafile;
 }
 
-template <class T, class U>
-uint8_t* Log<T,U>::serialize_index() {
+// Dummy
+template <class T>
+void Log<T>::write_to_index(time_t timestamp, uint32_t location) {
     uint8_t* indexfile_pos = this->indexfile + this->indexfile_size;
 
-    for (uint32_t i = 0; i < this->index_entries; i++) {
-        std::memcpy(indexfile_pos, this->index_ts + i, sizeof(time_t));
-        std::memcpy(indexfile_pos + sizeof(time_t), this->index_pos + i, sizeof(uint32_t));
-        indexfile_pos += INDEX_ENTRY_SIZE;
-    }
+    std::memcpy(indexfile_pos, &timestamp, sizeof(time_t));
+    std::memcpy(indexfile_pos + sizeof(time_t), &location, sizeof(uint32_t));
 
-    this->indexfile_size = indexfile_pos - this->indexfile;
-    this->index_entries = 0;
-
-    return this->indexfile;
+    this->indexfile_size += INDEX_ENTRY_SIZE;
 }
 
 // Dummy
-template <class T, class U>
-void Log<T,U>::write_to_file(uint32_t size) {
+template <class T>
+void Log<T>::write_to_file(uint32_t size) {
     std::memcpy(file + file_size, this->double_buffer, size);
     // A size worth of bytes was appended to the log file
     this->file_size += size;
 }
 
-template class Log<int, uint8_t>;
-// template class Log<int, uint16_t>;
-// template class Log<int, uint32_t>;
-template class Log<double, uint8_t>;
-// template class Log<double, uint16_t>;
-// template class Log<double, uint32_t>;
-template uint32_t find_entry<int, uint8_t>(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding);
-template log_slice_t log_slice<int, uint8_t>(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
+template class Log<int>;
+template class Log<double>;
+template uint32_t find_entry<int>(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding);
+template log_slice_t log_slice<int>(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
