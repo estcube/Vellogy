@@ -2,7 +2,6 @@
 #define LOGGING_H
 
 // C++ includes
-#include <cstdlib>
 #include <cstring>
 #include <climits>
 #include <ctime>
@@ -27,10 +26,9 @@
 
 // Smaller stuff:
 // TODO: use references
-// TODO: otsi end_ts enne üles
-// TODO: slicing põhikood f-ni
-// TODO: constructor Initializer list
-// TODO: de facto const fields to const
+// TODO: getter resolution jaoks
+// TODO: private struct find_entry_location jaoks
+// TODO: SimpleLog indeks korda
 
 // TODO: väiksemad asjad (üleval), 1 suurem (all)
 
@@ -69,79 +67,119 @@ struct log_slice_t {
     uint32_t end_location = UINT_MAX;
 };
 
-// Find closest entry whose timestamp is less than or equal to given timestamp, starting from address file + search_location
-template <class T>
-uint32_t find_entry(uint8_t* file, time_t timestamp, uint32_t search_location, bool succeeding);
-
-// Return the locations of the entries containing start timestamp and end timestamp in the log file in an array
-template <class T>
-log_slice_t log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts);
+template <class T> class BaseLog;
+template <class T> class RegularLog;
+template <class T> class LogSlice;
 
 template <class T>
-class Log {
+class LogSlice {
     private:
+        uint8_t* const file;
+        const uint32_t start_location;
+        const uint32_t end_location;
+        const int8_t resolution;
+
+    public:
+        LogSlice(uint8_t* file, uint32_t start_location, uint32_t end_location, int8_t resolution);
+        uint8_t* get_file();
+        uint32_t get_start_location();
+        uint32_t get_end_location();
+        int8_t get_resolution();
+        BaseLog<T> createLog(uint8_t* new_file);
+};
+
+template <class T>
+class BaseLog {
+    protected:
         // Files
         log_decode_info_t decode_info;
-        uint8_t* file;
-        uint32_t file_size = 0; // Size of log file in bytes
-        uint32_t file_entries = 0; // How many log entries have been added to the log file
-        uint8_t* metafile = NULL;
-        uint8_t* indexfile = NULL;
-        uint32_t indexfile_size = 0; // Size of index file in bytes
+        uint8_t* const file;
+        uint32_t file_size; // Size of log file in byte
+        uint32_t file_entries; // How many log entries have been added to the log files
+        uint8_t* const metafile;
+        uint8_t* const indexfile;
+        uint32_t indexfile_size; // Size of index file in bytes
 
         // Queues
         uint8_t* data_queue;
         uint8_t* double_buffer;
-        uint32_t queue_len = 0; // How many bytes have been adlog_slice_t slice(time_t start_ts, time_t end_ts); // Read an array of log entries from the chosen time periodded to the queue
+        uint32_t queue_len; // How many bytes have been added to the queue
 
-        // Logic
-        time_t last_timestamp = 0; // Last timestamp of logged data
-        uint8_t data_added = 0; // How many datapoints have been added to the queue under the last timestamp
-        int8_t resolution = -128; // 10^resolution is the smallest unit of time that needs to separable
-
-        uint32_t min_queue_size(); // Calculate minimum possible size in bytes for the data queue (maximum size of log in bytes)
-        uint16_t scale_timedelta(uint64_t timedelta); // Round a given timedelta to a multiple of 2^resolution and divide by 2^resolution
+        // Queues
         void write_to_queue(auto var_address, uint8_t len); // Write len bytes to queue from var_address
-        void write_to_queue_timestamp(); // Write current timestamp in byte form to the data queue
-        void write_to_queue_datapoint(T& datapoint); // Write datapoint in byte form to the data queue
-        void write_to_queue_timedelta(uint8_t timedelta); // Write timedelta in byte form to the data queue
-        void write_to_queue_data_added(); // Write current data_added in byte form to the data queue
         void switch_buffers(); // Switch data and double buffer
-        void end_entry(); // Manually close the current entry (write entry to file)
 
+        // Files
         void deserialize_meta_info(uint8_t* metafile);
         uint8_t* serialize_meta_info();
         void write_to_index(time_t timestamp, uint32_t location);
         void write_to_file(uint32_t size); // Write <size> bytes from active data buffer to log file
 
+        BaseLog(uint8_t* file); // Initialize the log with the given file (no meta- and indexfile)
+        BaseLog(uint8_t* metafile, uint8_t* indexfile, uint8_t* file); // Initialize the log (from a metafile) held in file pointed to by the third argument
+
     public:
-        Log(uint8_t* file, int8_t resolution); // Initialize the log with the given file (no meta- and indexfile)
-        Log(uint8_t* metafile, uint8_t* indexfile, uint8_t* file, int8_t resolution); // Initialize the log (from a metafile) held in file pointed to by the third argument
+        uint32_t get_file_size(); // Get size of log file in bytes
+        void save_meta_info(); // Write current state to metafile
+};
+
+template <class T>
+class RegularLog : public BaseLog<T> {
+    protected:
+        // Logic
+        time_t last_timestamp; // Last timestamp of logged data
+        uint8_t data_added; // How many datapoints have been added to the queue under the last timestamp
+        const int8_t resolution; // 10^resolution is the smallest unit of time that needs to separable
+
+        uint32_t min_queue_size(); // Calculate minimum possible size in bytes for the data queue (maximum size of log in bytes)
+        uint16_t scale_timedelta(uint64_t timedelta); // Round a given timedelta to a multiple of 2^resolution and divide by 2^resolution
+        void write_to_queue_timestamp(); // Write current timestamp in byte form to the data queue
+        void write_to_queue_datapoint(T& datapoint); // Write datapoint in byte form to the data queue
+        void write_to_queue_timedelta(uint8_t timedelta); // Write timedelta in byte form to the data queue
+        void write_to_queue_data_added(); // Write current data_added in byte form to the data queue
+        void end_entry(); // Manually close the current entry (write entry to file)
+
+    public:
+        RegularLog(uint8_t* file, int8_t resolution); // Initialize the log with the given file (no meta- and indexfile)
+        RegularLog(uint8_t* metafile, uint8_t* indexfile, uint8_t* file, int8_t resolution); // Initialize the log (from a metafile) held in file pointed to by the third argument
         void log(T& data); // Log data (implemented differently for different types), attach timestamp in function
         void log(T& data, time_t timestamp); // Log data with a given timestamp in the file
 
-        uint32_t get_file_size(); // Get size of log file in bytes
-        void save_meta_info(); // Write current state to metafile
         void flush(); // Write all datapoints in volatile memory to file
 
-        log_slice_t slice(time_t start_ts, time_t end_ts); // Read an array of log entries from the chosen time period
-        Log<T> compress(compression_method_t method); // Compress log with the chosen method
-        Log<T> merge(Log<T> otherLog); // Merge two logs and create a new log
+        LogSlice<T> slice(time_t start_ts, time_t end_ts); // Read an array of log entries from the chosen time period
+        // Log<T> compress(compression_method_t method); // Compress log with the chosen method
+        // Log<T> merge(Log<T> otherLog); // Merge two logs and create a new log
 };
 
 template <class T>
-class PeriodicLog : public Log<T> {
+class SimpleLog : public BaseLog<T> {
+    private:
+        uint32_t data_added; // Datapoints added to data_queue
+        time_t last_index_ts;
+        uint32_t last_index_pos;
+    public:
+        SimpleLog(uint8_t* file);
+        SimpleLog(uint8_t* metafile, uint8_t* indexfile, uint8_t* file);
+        void log(T& data); // Log data (implemented differently for different types), attach timestamp in function
+        void log(T& data, time_t timestamp);
+
+        void flush(); // Write all datapoints in volatile memory to file
+
+        LogSlice<T> slice(time_t start_ts, time_t end_ts); // Read an array of log entries from the chosen time period
+};
+
+template <class T>
+class PeriodicLog : public BaseLog<T> {
 
 };
 
 template <class T>
-class CircularLog : public Log<T> {
+class CircularLog : public RegularLog<T> {
 
 };
-
+// Return the locations of the entries containing start timestamp and end timestamp in the log file in an array
 template <class T>
-class ThreadsafeLog : public Log<T> {
-
-};
+LogSlice<T> log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts, int8_t resolution);
 
 #endif
