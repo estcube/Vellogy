@@ -21,19 +21,17 @@
  */
 
 // Smaller stuff:
-// TODO: use references
-// TODO: kahendotsing templatest välja
+// TODO: kahendotsing templatest välja (brief Mathias)
+// TODO: logutility ühte faili
+// TODO: getterid asjadele (brief Mathias)
 // TODO: slice f-nile arg, nö "kuhu mind kirjutatakse" (hiljem)
 
 // More important stuff:
-// TODO: getter resolution jaoks
-// TODO: resolution slicemisel arvesse võtta
-// TODO: logifaili algusesse logi tüüp (simple, regular, jne)
-// TODO: iga klass eraldi h-faili
-// TODO: decoder uuendada
+// TODO: logifaili algusesse logi tüüp (simple, regular, jne) (brief Mathias)
 // TODO: PeriodicLog
 
 // NOTE: metafile ülekirjutamine on ok
+// NOTE: use references, whenever possible
 // NOTE: for future ref: ära salvesta käsitsi failisuurust
 
 // Task list
@@ -61,6 +59,12 @@ class Log {
         uint32_t get_file_size() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_file_size();
+        }
+
+        // Get resolution of log timestamps
+        int8_t get_resolution() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_resolution();
         }
 
         // Write current state to metafile

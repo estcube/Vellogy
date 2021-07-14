@@ -39,6 +39,11 @@ class SimpleLog : public BaseLog<T> {
         }
 
         // Dummy function to make the common Log interface more general
+        int8_t get_resolution() {
+            return -128;
+        }
+
+        // Dummy function to make the common Log interface more general
         void flush() {
             return;
         }
@@ -71,7 +76,7 @@ class SimpleLog : public BaseLog<T> {
         }
 
         // Find last logged timestamp in the log file
-        static time_t find_last_timestamp(uint8_t* file, uint32_t file_size) {
+        static time_t find_last_timestamp(uint8_t* file, uint32_t file_size, int8_t resolution) {
             time_t last_ts;
             std::memcpy(&last_ts, file + file_size - sizeof(T) - sizeof(time_t), sizeof(time_t));
             return last_ts;

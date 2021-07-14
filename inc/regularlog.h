@@ -136,6 +136,11 @@ class RegularLog : public BaseLog<T> {
             this->data_added++;
         }
 
+        // Return resolution of log timestamps
+        int8_t get_resolution() {
+            return this->resolution;
+        }
+
         // Write all datapoints in volatile memory to file
         void flush() {
             this->end_entry();
@@ -179,12 +184,15 @@ class RegularLog : public BaseLog<T> {
         }
 
         // Find last logged timestamp in the log file
-        static time_t find_last_timestamp(uint8_t* file, uint32_t file_size) {
+        static time_t find_last_timestamp(uint8_t* file, uint32_t file_size, int8_t resolution) {
             uint8_t last_data_added;
             std::memcpy(&last_data_added, file + file_size - sizeof(uint8_t), sizeof(uint8_t));
 
-            uint8_t last_timedelta;
+            uint32_t last_timedelta;
             std::memcpy(&last_timedelta, file + file_size - 2 * sizeof(uint8_t), sizeof(uint8_t));
+            // Relative precision of timedelta (see scale_timedelta function for more info)
+            uint32_t rel_precision = pow(TS_BASE, abs(resolution - TS_RESOLUTION));
+            last_timedelta *= rel_precision;
 
             time_t last_ts;
             std::memcpy(&last_ts, file + file_size - sizeof(uint8_t) - (last_data_added + 1)*(sizeof(T) + sizeof(uint8_t)) - sizeof(time_t), sizeof(time_t));

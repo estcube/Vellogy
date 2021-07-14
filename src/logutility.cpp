@@ -69,7 +69,7 @@ LogSlice<T,E> log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, u
     start_ts = start_ts < first_ts ? first_ts : start_ts;
 
     // Find last timestamp value in the log file
-    time_t last_ts = T<E>::find_last_timestamp(file, file_size);
+    time_t last_ts = T<E>::find_last_timestamp(file, file_size, resolution);
     // Adjust end_ts if it is out of bounds
     end_ts = end_ts > last_ts ? last_ts : end_ts;
 
