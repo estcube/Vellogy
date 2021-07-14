@@ -1,9 +1,4 @@
-#include "logging.h"
-
-#include "mt25ql_driver.h"
-#include "ecbal.h"
-#include "echal_rcc.h"
-#include "echal_gpio.h"
+#include "logutility.h"
 
 #ifndef LOGGING_CFG_H
 #define PATH_LEN 4 // Length of filepaths

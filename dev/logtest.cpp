@@ -1,7 +1,7 @@
 #include <cmath>
 
 #include "common.h"
-#include "logging.h"
+#include "log.h"
 
 #define PI 3.14159265
 
