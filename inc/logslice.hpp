@@ -1,7 +1,7 @@
 #ifndef LOGSLICE_H
 #define LOGSLICE_H
 
-#include "baselog.h"
+#include "baselog.hpp"
 
 template <template <class> class T, class E>
 class LogSlice {
@@ -35,10 +35,13 @@ class LogSlice {
             return this->resolution;
         }
 
+        // NB! User is responsible for deleting the log object inside the log interface object returned by this function
         Log<T,E> createLog(uint8_t* new_file)  {
-            // TODO: allocate mem
-            T<E> new_log = T<E>::sliceToLog(new_file, this->file, this->start_location, this->end_location, this->resolution);
-            return Log<T,E>(&new_log);
+            // Allocate memory for new Log
+            uint8_t* buf = (uint8_t *)pvPortMalloc(sizeof(T<E>));
+            // Copy slice contents into new_file and return the new Log held in new_file
+            T<E>* new_log = new(buf) T<E>(this, new_file);
+            return Log<T,E>(new_log);
         }
 };
 

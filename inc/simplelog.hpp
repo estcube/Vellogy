@@ -1,23 +1,60 @@
 #ifndef SIMPLELOG_H
 #define SIMPLELOG_H
 
-#include "baselog.h"
+#include "baselog.hpp"
 
 template <class T>
 class SimpleLog : public BaseLog<T> {
     public:
+        // Initialize the log with the given file (no meta- and indexfile)
         SimpleLog(uint8_t* file)
             : BaseLog<T>(file)
         {
+            if (!this->file_size) {
+                log_file_type_t file_type = LOG_SIMPLE;
+                log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
+
+                std::memcpy(this->file + this->file_size, &file_type, sizeof(log_file_type_t));
+                this->file_size += sizeof(log_file_type_t);
+                std::memcpy(this->file + this->file_size, &data_type, sizeof(log_data_type_t));
+                this->file_size += sizeof(log_data_type_t);
+            }
+
             this->data_queue = (uint8_t *)pvPortMalloc(sizeof(time_t) + sizeof(T));
             this->double_buffer = (uint8_t *)pvPortMalloc(sizeof(time_t) + sizeof(T));
         }
 
+        // Initialize the log (from a metafile) held in file pointed to by the third argument
         SimpleLog(uint8_t* metafile, uint8_t* indexfile, uint8_t* file)
             : BaseLog<T>(metafile, indexfile, file)
         {
+            if (!this->file_size) {
+                log_file_type_t file_type = LOG_SIMPLE;
+                log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
+
+                std::memcpy(this->file + this->file_size, &file_type, sizeof(log_file_type_t));
+                this->file_size += sizeof(log_file_type_t);
+                std::memcpy(this->file + this->file_size, &data_type, sizeof(log_data_type_t));
+                this->file_size += sizeof(log_data_type_t);
+            }
+
             this->data_queue = (uint8_t *)pvPortMalloc(sizeof(time_t) + sizeof(T));
             this->double_buffer = (uint8_t *)pvPortMalloc(sizeof(time_t) + sizeof(T));
+        }
+
+        // Initialize the log from a log slice
+        SimpleLog(LogSlice<SimpleLog, T>* slice, uint8_t* new_file)
+            : SimpleLog<T>(new_file)
+        {
+            // Copy slice into the file provided
+            std::memcpy(this->file + this->file_size, slice->get_file() + slice->get_start_location(), slice->get_end_location() - slice->get_start_location());
+            this->file_size += slice->get_end_location() - slice->get_start_location();
+        }
+
+        // Free allocated buffers on object destruction
+        ~SimpleLog() {
+            vPortFree(this->data_queue);
+            vPortFree(this->double_buffer);
         }
 
         // Log data (implemented differently for different types), attach timestamp in function
@@ -28,10 +65,10 @@ class SimpleLog : public BaseLog<T> {
             this->write_to_queue(&data, sizeof(T));
 
             this->switch_buffers();
-            this->file_entries++;
+            this->entries_added++;
 
             // If enough data has been logged for a new index entry, create it
-            if (this->indexfile != NULL && this->file_entries % INDEX_DENSITY == 1) {
+            if (this->indexfile != NULL && this->entries_added % INDEX_DENSITY == 1) {
                 this->write_to_index(timestamp, this->file_size - sizeof(time_t) - sizeof(T));
             }
 
@@ -80,11 +117,6 @@ class SimpleLog : public BaseLog<T> {
             time_t last_ts;
             std::memcpy(&last_ts, file + file_size - sizeof(T) - sizeof(time_t), sizeof(time_t));
             return last_ts;
-        }
-
-        static SimpleLog<T> sliceToLog(uint8_t* new_file, uint8_t* file, uint32_t start_location, uint32_t end_location, int8_t resolution) {
-            std::memcpy(new_file, file + start_location, end_location - start_location);
-            return SimpleLog<T>(new_file);
         }
 };
 

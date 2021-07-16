@@ -14,7 +14,24 @@
 #include <FreeRTOS.h>
 #include "logging_cfg.h"
 
-enum compression_method_t {
+enum log_file_type_t : uint8_t {
+    LOG_REGULAR = 0,
+    LOG_SIMPLE,
+    LOG_PERIODIC
+};
+
+enum log_data_type_t : uint8_t {
+    LOG_UINT8_T = 0,
+    LOG_UINT16_T,
+    LOG_UINT32_T,
+    LOG_INT8_T,
+    LOG_INT16_T,
+    LOG_INT32_T,
+    LOG_FLOAT,
+    LOG_DOUBLE
+};
+
+enum log_compression_method_t : uint8_t {
     LOG_COMPRESSION_FFT,
     LOG_COMPRESSION_HUFFMAN
 };
@@ -44,7 +61,7 @@ class BaseLog {
         log_decode_info_t decode_info;
         uint8_t* const file;
         uint32_t file_size; // Size of log file in byte
-        uint32_t file_entries; // How many log entries have been added to the log files
+        uint32_t entries_added; // How many log entries have been added to the log file during current logging session
         uint8_t* const metafile;
         uint8_t* const indexfile;
         uint32_t indexfile_size; // Size of index file in bytes
@@ -78,8 +95,6 @@ class BaseLog {
 
             std::memcpy(&(this->decode_info), metafile_pos, sizeof(this->decode_info));
             metafile_pos += sizeof(this->decode_info);
-            std::memcpy(&(this->file_entries), metafile_pos, sizeof(this->file_entries));
-            metafile_pos += sizeof(this->file_entries);
             std::memcpy(&(this->file_size), metafile_pos, sizeof(this->file_size));
             metafile_pos += sizeof(this->file_size);
             std::memcpy(&(this->indexfile_size), metafile_pos, sizeof(this->indexfile_size));
@@ -91,8 +106,6 @@ class BaseLog {
 
             std::memcpy(metafile_pos, &(this->decode_info), sizeof(this->decode_info));
             metafile_pos += sizeof(this->decode_info);
-            std::memcpy(metafile_pos, &(this->file_entries), sizeof(this->file_entries));
-            metafile_pos += sizeof(this->file_entries);
             std::memcpy(metafile_pos, &(this->file_size), sizeof(this->file_size));
             metafile_pos += sizeof(this->file_size);
             std::memcpy(metafile_pos, &(this->indexfile_size), sizeof(this->indexfile_size));
@@ -123,7 +136,7 @@ class BaseLog {
         BaseLog(uint8_t* file)
             : file(file)
             , file_size{0}
-            , file_entries{0}
+            , entries_added{0}
             , metafile(NULL)
             , indexfile(NULL)
             , indexfile_size{0}
@@ -133,6 +146,7 @@ class BaseLog {
         // Initialize the log (from a metafile) held in file pointed to by the third argument
         BaseLog(uint8_t* metafile, uint8_t* indexfile, uint8_t* file)
             : file(file)
+            , entries_added{0}
             , metafile(metafile)
             , indexfile(indexfile)
             , queue_len{0}
@@ -141,9 +155,30 @@ class BaseLog {
         }
 
     public:
+        log_decode_info_t get_decode_info() {
+            return this->decode_info;
+        }
+
+        uint8_t* get_file() {
+            return this->file;
+        }
+
+        uint8_t* get_indexfile() {
+            return this->indexfile;
+        }
+
+        uint8_t* get_metafile() {
+            return this->metafile;
+        }
+
         // Get size of log file in bytes
         uint32_t get_file_size() {
             return this->file_size;
+        }
+
+        // Get size of log indexfile in bytes
+        uint32_t get_indexfile_size() {
+            return this->indexfile_size;
         }
 
         // Write current state to metafile

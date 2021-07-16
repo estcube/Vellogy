@@ -1,5 +1,5 @@
 # Usage for decoding regular/simple logs:
-# python3 logdecoder.py path_to_binary_file log_type T_format_string TS_format_string TS_subseconds_base TS_subseconds_resolution TS_subseconds_resolution_in_log
+# python3 logdecoder.py path_to_binary_file log_file_type T_format_string TS_format_string TS_subseconds_base TS_subseconds_resolution_power TS_subseconds_resolution_power_scaled
 # Last 3 parameters are not needed for simple logs
 # Example 1 (regular log): python3 data_logging/dev/logdecoder.py dump.bin regular I Q 10 -3 -1
 # Example 2 (simple log): python3 data_logging/dev/logdecoder.py dump.bin simple I Q
@@ -46,7 +46,8 @@ def simplelog_decode(buffer, T_format, TS_format):
     formatstring = "<" + TS_format + T_format
     entry_size = struct.calcsize(TS_format) + struct.calcsize(T_format)
 
-    offset = 0
+    # There is two bytes of metainfo in the beginning of each log file
+    offset = 2
     while offset < len(buffer):
         # Unpack one entry (timestamp + datapoint) at a time
         entry = struct.unpack_from(formatstring, buffer, offset)
@@ -65,7 +66,8 @@ def regularlog_decode(buffer, T_format, TS_format, rel_precision):
     U_format = "B"
 
     offset = len(buffer)
-    while offset > 0:
+    # There is two bytes of metainfo in the beginning of each log file
+    while offset > 2:
         # Note: "<" means little-endian
         formatstring = "<"
 
@@ -110,6 +112,9 @@ if __name__ == "__main__":
     log_type = sys.argv[2]
     T_format = sys.argv[3]
     TS_format = sys.argv[4]
+
+    data = []
+    times = []
 
     # Read bytes from input binary file
     with open(sys.argv[1], "rb") as infile:

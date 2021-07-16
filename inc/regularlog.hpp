@@ -1,7 +1,7 @@
 #ifndef REGULARLOG_H
 #define REGULARLOG_H
 
-#include "baselog.h"
+#include "baselog.hpp"
 
 template <class T>
 class RegularLog : public BaseLog<T> {
@@ -61,10 +61,10 @@ class RegularLog : public BaseLog<T> {
         void end_entry() {
             this->write_to_queue_data_added();
             // A new entry was written to the log file
-            this->file_entries++;
+            this->entries_added++;
 
             // Create an index entry (write it to indexfile) if enough log entries have been added to the log file
-            if (this->indexfile != NULL && this->file_entries % INDEX_DENSITY == 1) {
+            if (this->indexfile != NULL && this->entries_added % INDEX_DENSITY == 1) {
                 this->write_to_index(this->last_timestamp, this->file_size - this->queue_len);
             }
 
@@ -80,6 +80,17 @@ class RegularLog : public BaseLog<T> {
             , data_added{0}
             , resolution{resolution}
         {
+            if (!this->file_size) {
+                log_file_type_t file_type = LOG_REGULAR;
+                log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
+
+                std::memcpy(this->file + this->file_size, &file_type, sizeof(log_file_type_t));
+                this->file_size += sizeof(log_file_type_t);
+                // TODO: non-dummy value
+                std::memcpy(this->file + this->file_size, &data_type, sizeof(log_data_type_t));
+                this->file_size += sizeof(log_data_type_t);
+            }
+
             this->data_queue = (uint8_t *)pvPortMalloc(this->min_queue_size());
             this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
         }
@@ -91,8 +102,34 @@ class RegularLog : public BaseLog<T> {
             , data_added{0}
             , resolution{resolution}
         {
+            if (!this->file_size) {
+                log_file_type_t file_type = LOG_REGULAR;
+                log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
+
+                std::memcpy(this->file + this->file_size, &file_type, sizeof(log_file_type_t));
+                this->file_size += sizeof(log_file_type_t);
+                // TODO: non-dummy value
+                std::memcpy(this->file + this->file_size, &data_type, sizeof(log_data_type_t));
+                this->file_size += sizeof(log_data_type_t);
+            }
+
             this->data_queue = (uint8_t *)pvPortMalloc(this->min_queue_size());
             this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
+        }
+
+        // Initialize the log from a log slice
+        RegularLog(LogSlice<RegularLog, T>* slice, uint8_t* new_file)
+            : RegularLog<T>(new_file, slice->get_resolution())
+        {
+            // Copy slice into the file provided
+            std::memcpy(this->file + this->file_size, slice->get_file() + slice->get_start_location(), slice->get_end_location() - slice->get_start_location());
+            this->file_size += slice->get_end_location() - slice->get_start_location();
+        }
+
+        // Free allocated buffers on object destruction
+        ~RegularLog() {
+            vPortFree(this->data_queue);
+            vPortFree(this->double_buffer);
         }
 
         // Log data (implemented differently for different types), attach timestamp in function
@@ -198,11 +235,6 @@ class RegularLog : public BaseLog<T> {
             std::memcpy(&last_ts, file + file_size - sizeof(uint8_t) - (last_data_added + 1)*(sizeof(T) + sizeof(uint8_t)) - sizeof(time_t), sizeof(time_t));
             last_ts += last_timedelta;
             return last_ts;
-        }
-
-        static RegularLog<T> sliceToLog(uint8_t* new_file, uint8_t* file, uint32_t start_location, uint32_t end_location, int8_t resolution) {
-            std::memcpy(new_file, file + start_location, end_location - start_location);
-            return RegularLog<T>(new_file, resolution);
         }
 };
 

@@ -1,12 +1,12 @@
 #ifndef LOG_H
 #define LOG_H
 
-#include "logslice.h"
-#include "simplelog.h"
-#include "regularlog.h"
-#include "periodiclog.h"
-#include "circularlog.h"
-#include "logutility.h"
+#include "logslice.hpp"
+#include "simplelog.hpp"
+#include "regularlog.hpp"
+#include "periodiclog.hpp"
+#include "circularlog.hpp"
+#include "logutility.hpp"
 
 /**
  * @file logging.h
@@ -21,14 +21,12 @@
  */
 
 // Smaller stuff:
-// TODO: kahendotsing templatest välja (brief Mathias)
-// TODO: logutility ühte faili
-// TODO: getterid asjadele (brief Mathias)
+// TODO: namespace
 // TODO: slice f-nile arg, nö "kuhu mind kirjutatakse" (hiljem)
 
 // More important stuff:
-// TODO: logifaili algusesse logi tüüp (simple, regular, jne) (brief Mathias)
 // TODO: PeriodicLog
+// TODO: pokumentatsioon
 
 // NOTE: metafile ülekirjutamine on ok
 // NOTE: use references, whenever possible
@@ -55,10 +53,36 @@ class Log {
             this->obj = log_obj;
         };
 
+        log_decode_info_t get_decode_info() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_decode_info();
+        }
+
+        uint8_t* get_file() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_file();
+        }
+
+        uint8_t* get_indexfile() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_indexfile();
+        }
+
+        uint8_t* get_metafile() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_metafile();
+        }
+
         // Get size of log file in bytes
         uint32_t get_file_size() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_file_size();
+        }
+
+        // Get size of log indexfile in bytes
+        uint32_t get_indexfile_size() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_indexfile_size();
         }
 
         // Get resolution of log timestamps
