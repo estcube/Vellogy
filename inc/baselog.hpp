@@ -60,7 +60,7 @@ class BaseLog {
         // Files
         log_decode_info_t decode_info;
         uint8_t* const file;
-        uint32_t file_size; // Size of log file in byte
+        uint32_t file_size; // Size of log file in bytes
         uint32_t entries_added; // How many log entries have been added to the log file during current logging session
         uint8_t* const metafile;
         uint8_t* const indexfile;
@@ -155,6 +155,8 @@ class BaseLog {
         }
 
     public:
+        /**** Getters ****/
+
         log_decode_info_t get_decode_info() {
             return this->decode_info;
         }
@@ -180,6 +182,8 @@ class BaseLog {
         uint32_t get_indexfile_size() {
             return this->indexfile_size;
         }
+
+        /**** Utility functions ****/
 
         // Write current state to metafile
         void save_meta_info() {

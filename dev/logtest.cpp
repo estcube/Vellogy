@@ -397,13 +397,13 @@ static void test12() {
         // file size in bytes
         0x00, 0x00, 0x00, 0x00,
         // indexfile size in bytes
-        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00
     };
     uint8_t indexfile[256];
     uint8_t file[2048];
 
     SimpleLog<int> logi = SimpleLog<int>(metafile, indexfile, file);
-    Log log11 = Log(&logi);
+    Log log12 = Log(&logi);
 
     int data[100];
     time_t timestamp = 1603740000;
@@ -411,36 +411,127 @@ static void test12() {
     // Expected behaviour: the log file is 1200 bytes larger after this loop and 20 index entries are created
     for (uint8_t i = 0; i < 100; i++) {
         data[i] = i*100;
-        log11.log(data[i], timestamp + i*64);
+        log12.log(data[i], timestamp + i*64);
     }
 
     // Test whole file slice
     LogSlice<SimpleLog, int> slice1 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740000, 1603746400, -3);  // Expected {2, 1202}
     LogSlice<SimpleLog, int> slice1_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740000, 1603746400, -3);
-    LogSlice<SimpleLog, int> alt1 = log11.slice(1603740000, 1603746400);
+    LogSlice<SimpleLog, int> alt1 = log12.slice(1603740000, 1603746400);
     // Test timestamps out of bounds
     LogSlice<SimpleLog, int> slice2 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603730000, 1603766400, -3);  // Expected {2, 1202}
     LogSlice<SimpleLog, int> slice2_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603730000, 1603766400, -3);
-    LogSlice<SimpleLog, int> alt2 = log11.slice(1603730000, 1603766400);
+    LogSlice<SimpleLog, int> alt2 = log12.slice(1603730000, 1603766400);
     // Test random timestamps in different index entries
     LogSlice<SimpleLog, int> slice3 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740131, 1603744681, -3);  // Expected {26, 890}
     LogSlice<SimpleLog, int> slice3_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740131, 1603744681, -3);
-    LogSlice<SimpleLog, int> alt3 = log11.slice(1603740131, 1603744681);
+    LogSlice<SimpleLog, int> alt3 = log12.slice(1603740131, 1603744681);
     // Test exact entry timestamps
     LogSlice<SimpleLog, int> slice4 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740640, 1603742560, -3);  // Expected {122, 494}
     LogSlice<SimpleLog, int> slice4_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740640, 1603742560, -3);
-    LogSlice<SimpleLog, int> alt4 = log11.slice(1603740640, 1603742560);
+    LogSlice<SimpleLog, int> alt4 = log12.slice(1603740640, 1603742560);
     // Test random timestamps in same index entry
     LogSlice<SimpleLog, int> slice5 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740972, 1603741099, -3);  // Expected {182, 218}
     LogSlice<SimpleLog, int> slice5_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740972, 1603741099, -3);
-    LogSlice<SimpleLog, int> alt5 = log11.slice(1603740972, 1603741099);
+    LogSlice<SimpleLog, int> alt5 = log12.slice(1603740972, 1603741099);
     // Test random timestamps in same log entry
     LogSlice<SimpleLog, int> slice6 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740972, 1603740980, -3);  // Expected {182, 194}
     LogSlice<SimpleLog, int> slice6_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740972, 1603740980, -3);
-    LogSlice<SimpleLog, int> alt6 = log11.slice(1603740972, 1603740980);
+    LogSlice<SimpleLog, int> alt6 = log12.slice(1603740972, 1603740980);
 
     uint8_t new_file[512];
     Log<SimpleLog, int> new_log = alt5.createLog(new_file);
+}
+
+static void test13() {
+    // Test PeriodicLog functionality
+    // NOTE: DATAPOINTS_IN_ENTRY is set to 20
+
+    // First without indexfile
+    uint8_t file1[1024];
+
+    PeriodicLog<int> logi1 = PeriodicLog<int>(file1);
+    Log log13a = Log(&logi1);
+
+    int data1[200];
+    time_t timestamp1 = 1626771000;
+
+    // Expected behaviour: 4 log entries are created
+    for (uint8_t i = 0; i < 97; i++) {
+        data1[i] = i;
+        log13a.log(data1[i], timestamp1);
+        timestamp1 += 100;
+    }
+
+    // Expected behaviour: 5th log entry is created
+    log13a.period_change();
+
+    // Expected behaviour: 3 more log entries are created and 6 datapoints remain in the queue
+    for (uint8_t i = 97; i < 163; i++) {
+        data1[i] = i;
+        log13a.log(data1[i], timestamp1);
+        timestamp1 += 50;
+    }
+
+    // Expected behaviour: 9th log entry is created
+    log13a.flush();
+
+    // Now with indexfile
+    // Metafile containing random decode info
+    uint8_t metafile2[] = {
+        // decode info
+        0x00, 0x00, 0x00, 0x10, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x00, 0x00,
+        // file size in bytes
+        0x00, 0x00, 0x00, 0x00,
+        // indexfile size in bytes
+        0x00, 0x00, 0x00, 0x00
+    };
+    uint8_t indexfile2[256];
+    uint8_t file2[2048];
+
+    PeriodicLog<int> logi2 = PeriodicLog<int>(metafile2, indexfile2, file2);
+    Log log13b = Log(&logi2);
+
+    int data2[300];
+    time_t timestamp2 = 1626771000;
+
+    // Expected behaviour: 5 log entries and 1 index entry are created
+    for (uint8_t i = 0; i < 111; i++) {
+        data2[i] = i;
+        log13b.log(data2[i], timestamp2);
+        timestamp2 += 50;
+    }
+
+    // Expected behaviour: 6th log entry and 2nd index entry are created
+    log13b.period_change();
+
+    // Expected behaviour: 6 more log entries (12 in total now) and 3rd index entry are created
+    for (uint8_t i = 111; i < 238; i++) {
+        data2[i] = i;
+        log13b.log(data2[i], timestamp2);
+        timestamp2 += 100;
+    }
+
+    // Expected behaviour: 13th log entry is created
+    log13b.flush();
+
+    // Test logging into a file that already has entries
+    log13b.save_meta_info();
+    PeriodicLog<int> logi3 = PeriodicLog<int>(metafile2, indexfile2, file2);
+    Log log13c = Log(&logi3);
+
+    int data3[100];
+    time_t timestamp3 = 1626771000;
+
+    // Expected behaviour: 3 more log entries and 4th index entry are created
+    for (uint8_t i = 0; i < 63; i++) {
+        data3[i] = i;
+        log13c.log(data3[i], timestamp3);
+        timestamp3 += 32;
+    }
+
+    // Expected behaviour: 17th log entry is created
+    log13c.flush();
 }
 
 int main() {
@@ -456,6 +547,7 @@ int main() {
     test10();
     test11();
     test12();
+    test13();
 
     Success_Handler();
 }

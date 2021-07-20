@@ -22,10 +22,13 @@
 
 // Smaller stuff:
 // TODO: namespace
+// TODO: write_to_queue ühtlaseks
+// TODO: entry_timestamp ja data_added nullimine ühtlaseks
+// TODO: arvestada driftiga?
 // TODO: slice f-nile arg, nö "kuhu mind kirjutatakse" (hiljem)
 
 // More important stuff:
-// TODO: PeriodicLog
+// TODO: PeriodicLog (logging, indexing, slicing, decoding)
 // TODO: pokumentatsioon
 
 // NOTE: metafile ülekirjutamine on ok
@@ -49,9 +52,13 @@ class Log {
     private:
         void* obj;
     public:
+        /**** Constructors ****/
+
         Log(T<E>* log_obj) {
             this->obj = log_obj;
         };
+
+        /**** Getters ****/
 
         log_decode_info_t get_decode_info() {
             T<E>* x = static_cast<T<E>*>(this->obj);
@@ -85,23 +92,7 @@ class Log {
             return x->get_indexfile_size();
         }
 
-        // Get resolution of log timestamps
-        int8_t get_resolution() {
-            T<E>* x = static_cast<T<E>*>(this->obj);
-            return x->get_resolution();
-        }
-
-        // Write current state to metafile
-        void save_meta_info() {
-            T<E>* x = static_cast<T<E>*>(this->obj);
-            x->save_meta_info();
-        }
-
-        // Write all datapoints in volatile memory to file
-        void flush() {
-            T<E>* x = static_cast<T<E>*>(this->obj);
-            x->flush();
-        }
+        /**** Main functionality ****/
 
         // Write given datapoint with given timestamp to log file
         void log(E& data, time_t timestamp) {
@@ -113,6 +104,32 @@ class Log {
         LogSlice<T,E> slice(time_t start_ts, time_t end_ts) {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->slice(start_ts, end_ts);
+        }
+
+        /**** Utility functions ****/
+
+        // Write all datapoints in volatile memory to file (valid for everything except SimpleLog)
+        void flush() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            x->flush();
+        }
+
+        // Get resolution of log timestamps (valid only for RegularLog)
+        int8_t get_resolution() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->get_resolution();
+        }
+
+        // Signify period change in incoming data (valid only for PeriodicLog)
+        void period_change() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->period_change();
+        }
+
+        // Write current state to metafile (valid for all)
+        void save_meta_info() {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            x->save_meta_info();
         }
 };
 

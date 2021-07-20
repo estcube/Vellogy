@@ -6,6 +6,8 @@
 template <class T>
 class SimpleLog : public BaseLog<T> {
     public:
+        /**** Constructors ****/
+
         // Initialize the log with the given file (no meta- and indexfile)
         SimpleLog(uint8_t* file)
             : BaseLog<T>(file)
@@ -42,6 +44,8 @@ class SimpleLog : public BaseLog<T> {
             this->double_buffer = (uint8_t *)pvPortMalloc(sizeof(time_t) + sizeof(T));
         }
 
+        /**** Main functionality ****/
+
         // Initialize the log from a log slice
         SimpleLog(LogSlice<SimpleLog, T>* slice, uint8_t* new_file)
             : SimpleLog<T>(new_file)
@@ -61,8 +65,8 @@ class SimpleLog : public BaseLog<T> {
         void log(T& data);
 
         void log(T& data, time_t timestamp) {
-            this->write_to_queue(&timestamp, sizeof(time_t));
-            this->write_to_queue(&data, sizeof(T));
+            this->write_to_queue(&timestamp, sizeof(timestamp));
+            this->write_to_queue(&data, sizeof(data));
 
             this->switch_buffers();
             this->entries_added++;
@@ -75,20 +79,29 @@ class SimpleLog : public BaseLog<T> {
             this->queue_len = 0;
         }
 
-        // Dummy function to make the common Log interface more general
-        int8_t get_resolution() {
-            return -128;
+        // Read an array of log entries from the chosen time period
+        LogSlice<SimpleLog,T> slice(time_t start_ts, time_t end_ts) {
+            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128);
         }
+
+        /**** Utility functions ****/
 
         // Dummy function to make the common Log interface more general
         void flush() {
             return;
         }
 
-        // Read an array of log entries from the chosen time period
-        LogSlice<SimpleLog,T> slice(time_t start_ts, time_t end_ts) {
-            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128);
+        // Dummy function to make the common Log interface more general
+        int8_t get_resolution() {
+            return -128;
         }
+
+        // Dummy function to make the common Log interface more general
+        void period_change() {
+            return;
+        }
+
+        /**** Static utility functions ****/
 
         // Find closest log entry whose timestamp is less than or equal to given timestamp, starting from address file + search_location
         static uint32_t find_log_entry(uint8_t* file, uint8_t datapoint_size, time_t timestamp, uint32_t search_location, bool succeeding) {
