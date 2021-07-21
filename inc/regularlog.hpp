@@ -68,7 +68,11 @@ class RegularLog : public BaseLog<T> {
                 this->write_to_index(this->entry_timestamp, this->file_size - this->queue_len);
             }
 
-            // Reset queue length to 0
+            // Reset log state
+            this->entry_timestamp = 0;
+            this->data_added = 0;
+
+            // Reset queue state
             this->queue_len = 0;
         }
 
@@ -190,7 +194,6 @@ class RegularLog : public BaseLog<T> {
         // Write all datapoints in volatile memory to file
         void flush() {
             this->end_entry();
-            this->entry_timestamp = 0;
         }
 
         // Return resolution of log timestamps

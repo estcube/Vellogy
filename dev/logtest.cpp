@@ -534,6 +534,83 @@ static void test13() {
     log13c.flush();
 }
 
+static void test14() {
+    // Test PeriodicLog slicing functionality
+    // NOTE: DATAPOINTS_IN_ENTRY is set to 20
+
+    uint8_t metafile[] = {
+        // decode info
+        0x00, 0x00, 0x00, 0x10, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x00, 0x00,
+        // file size in bytes
+        0x00, 0x00, 0x00, 0x00,
+        // indexfile size in bytes
+        0x00, 0x00, 0x00, 0x00
+    };
+    uint8_t indexfile[256];
+    uint8_t file[1536];
+
+    PeriodicLog<int> logi = PeriodicLog<int>(metafile, indexfile, file);
+    Log log14 = Log(&logi);
+
+    int data[300];
+    time_t timestamp = 1626771000;
+
+    // Expected behaviour: 5 log entries and 1 index entry are created
+    for (int i = 0; i < 114; i++) {
+        data[i] = i;
+        log14.log(data[i], timestamp);
+        timestamp += 25;
+    }
+
+    // Expected behaviour: another log and index entry are created
+    log14.period_change();
+
+    // Expected behaviour: 5 more log entries and 1 more index entry are created
+    for (int i = 114; i < 224; i++) {
+        data[i] = i;
+        log14.log(data[i], timestamp);
+        timestamp += 50;
+    }
+
+    // Expected behaviour: another log entry is created
+    log14.flush();
+
+    // Expected behaviour: 2 more log entries are created
+    for (int i = 224; i < 264; i++) {
+        data[i] = i;
+        log14.log(data[i], timestamp);
+        timestamp += 50;
+    }
+
+    // By now, there should be a total of 14 log entries and 3 index entries
+
+    // Slicing tests
+    // Test whole file slice
+    LogSlice<PeriodicLog, int> slice1 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626771009, 1626781280, -3);  // Expected {2, 1338}
+    LogSlice<PeriodicLog, int> slice1_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626771009, 1626781280, -3);
+    LogSlice<PeriodicLog, int> alt1 = log14.slice(1626771009, 1626781280);
+    // Test timestamps out of bounds
+    LogSlice<PeriodicLog, int> slice2 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626770000, 1636779999, -3);  // Expected {2, 1338}
+    LogSlice<PeriodicLog, int> slice2_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626770000, 1636779999, -3);
+    LogSlice<PeriodicLog, int> alt2 = log14.slice(1626770000, 1636779999);
+    // Test random timestamps in different index entries
+    LogSlice<PeriodicLog, int> slice3 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626771549, 1626774355, -3);  // Expected {102, 678}
+    LogSlice<PeriodicLog, int> slice3_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626771549, 1626774355, -3);
+    LogSlice<PeriodicLog, int> alt3 = log14.slice(1626771549, 1626774355);
+    // Test exact entry timestamps
+    LogSlice<PeriodicLog, int> slice4 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626773500, 1626779300, -3);  // Expected {502, 1138}
+    LogSlice<PeriodicLog, int> slice4_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626773500, 1626779300, -3);
+    LogSlice<PeriodicLog, int> alt4 = log14.slice(1626773500, 1626779300);
+    // Test random timestamps in same index entry
+    LogSlice<PeriodicLog, int> slice5 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626775962, 1626777003, -3);  // Expected {778, 978}
+    LogSlice<PeriodicLog, int> slice5_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626775962, 1626777003, -3);
+    LogSlice<PeriodicLog, int> alt5 = log14.slice(1626775962, 1626777003);
+    // Test random timestamps in same log entry
+    LogSlice<PeriodicLog, int> slice6 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626779511, 1626779857, -3);  // Expected {1138, 1238}
+    LogSlice<PeriodicLog, int> slice6_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626779511, 1626779857, -3);
+    LogSlice<PeriodicLog, int> alt6 = log14.slice(1626779511, 1626779857);
+}
+
 int main() {
     test1();
     test2();
@@ -548,6 +625,7 @@ int main() {
     test11();
     test12();
     test13();
+    test14();
 
     Success_Handler();
 }

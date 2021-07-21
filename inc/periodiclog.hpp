@@ -97,6 +97,15 @@ class PeriodicLog : public BaseLog<T> {
             this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
         }
 
+        // Initialize the log from a log slice
+        PeriodicLog(LogSlice<PeriodicLog, T>* slice, uint8_t* new_file)
+            : PeriodicLog<T>(new_file)
+        {
+            // Copy slice into the file provided
+            std::memcpy(this->file + this->file_size, slice->get_file() + slice->get_start_location(), slice->get_end_location() - slice->get_start_location());
+            this->file_size += slice->get_end_location() - slice->get_start_location();
+        }
+
         // Free allocated buffers on object destruction
         ~PeriodicLog() {
             vPortFree(this->data_queue);
@@ -127,6 +136,11 @@ class PeriodicLog : public BaseLog<T> {
             }
         }
 
+        // Read an array of log entries from the chosen time period
+        LogSlice<PeriodicLog,T> slice(time_t start_ts, time_t end_ts) {
+            return log_slice<PeriodicLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128);
+        }
+
         /**** Utility functions ****/
 
         // Write all datapoints in volatile memory to file
@@ -142,6 +156,43 @@ class PeriodicLog : public BaseLog<T> {
         // Signify period change in incoming data on user level
         void period_change() {
             this->end_entry();
+        }
+
+        /**** Static utility functions ****/
+
+        // Find closest log entry whose timestamp is less than or equal to given timestamp, starting from address file + search_location
+        static uint32_t find_log_entry(uint8_t* file, uint8_t datapoint_size, time_t timestamp, uint32_t search_location, bool succeeding) {
+            uint32_t reading_location = search_location;
+
+            bool done = false;
+            while (!done) {
+                reading_location -= sizeof(uint32_t);
+                uint32_t data_added;
+                std::memcpy(&data_added, file + reading_location, sizeof(uint32_t));
+
+                // Let's jump ahead and read the timestamp in the beginning of the entry
+                uint32_t data_size = data_added * datapoint_size;
+                reading_location -= data_size + 2 * sizeof(time_t);
+                time_t entry_ts;
+                std::memcpy(&entry_ts, file + reading_location, sizeof(time_t));
+
+                // The timestamp we are looking for is in this entry
+                if (timestamp >= entry_ts) {
+                    // if we need to find the succeeding entry to the one containing the timestamp instead
+                    if (succeeding) reading_location += 2 * sizeof(time_t) + data_size + sizeof(uint32_t);
+                    // Exit search loop
+                    done = true;
+                }
+            }
+
+            return reading_location;
+        }
+
+        // Find last logged timestamp in the log file
+        static time_t find_last_timestamp(uint8_t* file, uint32_t file_size, int8_t resolution) {
+            time_t last_ts;
+            std::memcpy(&last_ts, file + file_size - sizeof(uint32_t) - sizeof(time_t), sizeof(time_t));
+            return last_ts;
         }
 };
 

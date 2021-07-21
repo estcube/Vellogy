@@ -5,6 +5,15 @@
 
 template <class T>
 class SimpleLog : public BaseLog<T> {
+    private:
+        void write_to_queue_timestamp(time_t timestamp) {
+            this->write_to_queue(&timestamp, sizeof(timestamp));
+        }
+
+        void write_to_queue_datapoint(T& data) {
+            this->write_to_queue(&data, sizeof(data));
+        }
+
     public:
         /**** Constructors ****/
 
@@ -65,8 +74,8 @@ class SimpleLog : public BaseLog<T> {
         void log(T& data);
 
         void log(T& data, time_t timestamp) {
-            this->write_to_queue(&timestamp, sizeof(timestamp));
-            this->write_to_queue(&data, sizeof(data));
+            this->write_to_queue_timestamp(timestamp);
+            this->write_to_queue_datapoint(data);
 
             this->switch_buffers();
             this->entries_added++;

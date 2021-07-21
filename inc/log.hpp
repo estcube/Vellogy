@@ -22,13 +22,11 @@
 
 // Smaller stuff:
 // TODO: namespace
-// TODO: write_to_queue ühtlaseks
-// TODO: entry_timestamp ja data_added nullimine ühtlaseks
-// TODO: arvestada driftiga?
+// TODO: arvestada driftiga? - räägi AOCS inimestega
 // TODO: slice f-nile arg, nö "kuhu mind kirjutatakse" (hiljem)
 
 // More important stuff:
-// TODO: PeriodicLog (logging, indexing, slicing, decoding)
+// TODO: PeriodicLog (slicing, decoding)
 // TODO: pokumentatsioon
 
 // NOTE: metafile ülekirjutamine on ok
