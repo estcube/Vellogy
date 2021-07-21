@@ -186,6 +186,12 @@ class RegularLog : public BaseLog<T> {
             return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution);
         }
 
+        // Read an array of log entries from the chosen time period
+        // Write resulting slice into new_file
+        LogSlice<RegularLog,T> slice(time_t start_ts, time_t end_ts, uint8_t* new_file) {
+            return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution, new_file);
+        }
+
         // Log<T> compress(compression_method_t method); // Compress log with the chosen method
         // Log<T> merge(Log<T> otherLog); // Merge two logs and create a new log
 

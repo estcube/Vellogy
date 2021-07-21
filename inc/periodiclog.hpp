@@ -141,6 +141,12 @@ class PeriodicLog : public BaseLog<T> {
             return log_slice<PeriodicLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128);
         }
 
+        // Read an array of log entries from the chosen time period
+        // Write resulting slice into new_file
+        LogSlice<PeriodicLog,T> slice(time_t start_ts, time_t end_ts, uint8_t* new_file) {
+            return log_slice<PeriodicLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128, new_file);
+        }
+
         /**** Utility functions ****/
 
         // Write all datapoints in volatile memory to file

@@ -111,4 +111,17 @@ LogSlice<T,E> log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, u
     return LogSlice<T,E>(file, start.location_in_file, end.location_in_file, resolution);
 }
 
+// Return the locations of the entries containing start timestamp and end timestamp in the log file in an array
+// Write the returned log slice into new_file
+template <template <class> class T, class E>
+LogSlice<T,E> log_slice(uint8_t* file, uint32_t file_size, uint8_t* indexfile, uint32_t indexfile_size, time_t start_ts, time_t end_ts, int8_t resolution, uint8_t* new_file) {
+    LogSlice<T,E> slice = log_slice<T,E>(file, file_size, indexfile, indexfile_size, start_ts, end_ts, resolution);
+    // Create a new log and copy slice contents into new_file
+    Log<T,E> new_log = slice.createLog(new_file);
+    // Delete the resulting Log object because we don't need it
+    vPortFree(new_log.get_obj());
+
+    return slice;
+}
+
 #endif

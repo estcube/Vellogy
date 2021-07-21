@@ -198,6 +198,11 @@ static void test6() {
 
     uint8_t new_file[512];
     Log<RegularLog, int> new_log = slice4.createLog(new_file);
+
+    uint8_t slice18_file[64];
+    LogSlice<RegularLog, int> slice18_withfile = log6.slice(1603730512, 1603730512, slice18_file); // Expected {60, 89}
+
+    vPortFree(new_log.get_obj());
 }
 
 static void test7() {
@@ -441,6 +446,11 @@ static void test12() {
 
     uint8_t new_file[512];
     Log<SimpleLog, int> new_log = alt5.createLog(new_file);
+
+    uint8_t slice7_file[512];
+    LogSlice<SimpleLog, int> slice7_withfile = log12.slice(1603740640, 1603742560, slice7_file); // Expected {122, 494}
+
+    vPortFree(new_log.get_obj());
 }
 
 static void test13() {
@@ -609,6 +619,9 @@ static void test14() {
     LogSlice<PeriodicLog, int> slice6 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626779511, 1626779857, -3);  // Expected {1138, 1238}
     LogSlice<PeriodicLog, int> slice6_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626779511, 1626779857, -3);
     LogSlice<PeriodicLog, int> alt6 = log14.slice(1626779511, 1626779857);
+
+    uint8_t slice7_file[102];
+    LogSlice<PeriodicLog, int> slice7_withfile = log14.slice(1626779511, 1626779857, slice7_file); // Expected {1138, 1238}
 }
 
 int main() {

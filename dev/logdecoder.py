@@ -3,6 +3,7 @@
 # Last 3 parameters are not needed for simple logs
 # Example 1 (regular log): python3 data_logging/dev/logdecoder.py dump.bin regular I Q 10 -3 -1
 # Example 2 (simple log): python3 data_logging/dev/logdecoder.py dump.bin simple I Q
+# Example 3 (periodic log): python3 data_logging/dev/logdecoder.py dump.bin periodic I Q
 
 import sys
 import struct
@@ -96,6 +97,44 @@ def regularlog_decode(buffer, T_format, TS_format, rel_precision):
     return data[::-1], timestamps[::-1]
 
 
+def periodiclog_decode(buffer, T_format, TS_format):
+    data = []
+    timestamps = []
+
+    U_format = "I"
+
+    offset = len(buffer)
+    # There is two bytes of metainfo in the beginning of each log file
+    while offset > 2:
+        # Note: "<" means little-endian
+        formatstring = "<"
+
+        offset -= struct.calcsize(U_format)
+        data_added = struct.unpack_from("<" + U_format, buffer, offset)[0]
+
+        # Contruct the formatstring from timestamp and data formats in the order they appear in the (periodic) log file
+        formatstring += TS_format
+        for i in range(data_added):
+            formatstring += T_format
+        formatstring += TS_format
+
+        # Move the buffer pointer into the beginning of the entry
+        offset -= struct.calcsize(TS_format) + struct.calcsize(T_format) * data_added + struct.calcsize(TS_format)
+        # Read in the entry (everything except data_added), using the constructed formatstring
+        entry = struct.unpack_from(formatstring, buffer, offset)
+
+        entry_timestamp = entry[0]
+        last_timestamp = entry[1 + data_added]
+        period = (last_timestamp - entry_timestamp) / (data_added - 1)
+        # Start adding datapoints and timestamps into the decoded log, starting from the end of the entry
+        for i in range(data_added, 0, -1):
+            # Calculate timestamp for each datapoint (using interpolation)
+            timestamps.append(int(entry_timestamp + (i - 1) * period))
+            data.append(entry[i])
+
+    return data[::-1], timestamps[::-1]
+
+
 def log_export_csv(filename, data, timestamps):
     with open(filename, 'w', newline='\n') as file:
         writer = csv.writer(file, delimiter=',')
@@ -109,7 +148,7 @@ def log_plot(data, timestamps):
 
 
 if __name__ == "__main__":
-    log_type = sys.argv[2]
+    log_file_type = sys.argv[2]
     T_format = sys.argv[3]
     TS_format = sys.argv[4]
 
@@ -121,12 +160,14 @@ if __name__ == "__main__":
         log_bytes = bytes(infile.read())
 
     # Invoke different functions for decoding based on log type
-    if log_type == "regular":
+    if log_file_type == "regular":
         # How much less precise are the logged timedeltas from the actual timestamps
         rel_precision = int(sys.argv[5]) ** abs(int(sys.argv[6]) - int(sys.argv[7]))
         data, times = regularlog_decode(log_bytes, T_format, TS_format, rel_precision)
-    elif log_type == "simple":
+    elif log_file_type == "simple":
         data, times = simplelog_decode(log_bytes, T_format, TS_format)
+    elif log_file_type == "periodic":
+        data, times = periodiclog_decode(log_bytes, T_format, TS_format)
 
     log_export_csv("log.csv", data, times)
     log_plot(data, times)

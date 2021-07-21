@@ -23,10 +23,9 @@
 // Smaller stuff:
 // TODO: namespace
 // TODO: arvestada driftiga? - räägi AOCS inimestega
-// TODO: slice f-nile arg, nö "kuhu mind kirjutatakse" (hiljem)
 
 // More important stuff:
-// TODO: PeriodicLog (slicing, decoding)
+// TODO: CircularLog
 // TODO: pokumentatsioon
 
 // NOTE: metafile ülekirjutamine on ok
@@ -44,6 +43,7 @@
 // Slice peab inheritima koos Log objektiga sama interface'i, kus on compress f-n ja vb midagi veel. Slice-l peab olema võimalus päris logiks saada (kopeerimine).
 // 6. SliceLog objektil on compress funktsioon. Loetakse antud aegadega piiratud andmed ja siis compressitakse. Kui kasutaja annab faili, kirjutatakse tulemus faili.
 // 7. Kolm logi tüüpi: täiesti random (timestamp + data), somewhat random aga enamasti perioodiline (ts + n * (data + timedelta)), perioodiline (PeriodicLog)
+// 8. Implementeerida päris timestamp koodis
 
 template<template <class> class T, class E> requires Loggable<T,E>
 class Log {
@@ -57,6 +57,10 @@ class Log {
         };
 
         /**** Getters ****/
+
+        void* get_obj() {
+            return obj;
+        }
 
         log_decode_info_t get_decode_info() {
             T<E>* x = static_cast<T<E>*>(this->obj);
@@ -102,6 +106,13 @@ class Log {
         LogSlice<T,E> slice(time_t start_ts, time_t end_ts) {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->slice(start_ts, end_ts);
+        }
+
+        // Read an array of log entries from the chosen time period
+        // Write resulting log slice into the file new_file
+        LogSlice<T,E> slice(time_t start_ts, time_t end_ts, uint8_t* new_file) {
+            T<E>* x = static_cast<T<E>*>(this->obj);
+            return x->slice(start_ts, end_ts, new_file);
         }
 
         /**** Utility functions ****/
