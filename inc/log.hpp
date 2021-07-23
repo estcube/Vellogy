@@ -1,3 +1,21 @@
+/**
+ * @file log.hpp
+ *
+ * Module for data logging on ESTCube-2
+ * The module allows to:
+ * * Create a log in a given file
+ * * Save datapoints and their capturing times in the created log file
+ * * Search for data logged in a given time interval from the log file
+ *
+ * Following macros can be defined in logging_cfg.h:
+ * * LOG_PATH_LEN                       - How many bytes are allocated for holding the path to a log file
+ * * LOG_FORMATSTRING_LEN               - How many bytes are allocated for holding a timestamp or a datapoint formatstring (for decoding)
+ * * LOG_REGULAR_INDEX_DENSITY          - After how many log entries is an index entry created (for regular logs)
+ * * LOG_SIMPLE_INDEX_DENSITY           - After how many log entries is an index entry created (for simple logs)
+ * * LOG_PERIODIC_INDEX_DENSITY         - After how many log entries is an index entry created (for periodic logs)
+ * * LOG_PERIODIC_DATAPOINTS_IN_ENTRY   - How many datapoints can one periodic log entry hold
+ */
+
 #ifndef LOG_H
 #define LOG_H
 
@@ -9,86 +27,83 @@
 #include "logutility.hpp"
 
 /**
- * @file logging.h
+ * Log common user interface class
  *
- * Module for data logging on ESTCube-2
- * Logging module configuration can be found in @file logging_cfg.h
+ * The Log object is a wrapper for a BaseLog subclass object.
+ * All the Log class methods are invoked on the BaseLog subclass object.
+ * This allows to create a common interface for handling logs
  *
- * The module allows to:
- * - Create a log in a given file
- * - Save datapoints and their capturing times in the created log file
- * - Search for data logged in a given time interval from the log file
+ * @tparam T a subclass of BaseLog on which all the functions are actually called (determines the inner log file structure)
+ * @tparam E the type of data held in the log
  */
-
-// Smaller stuff:
-// TODO: namespace
-// TODO: arvestada driftiga? - räägi AOCS inimestega
-
-// More important stuff:
-// TODO: CircularLog
-// TODO: pokumentatsioon
-
-// NOTE: metafile ülekirjutamine on ok
-// NOTE: use references, whenever possible
-// NOTE: for future ref: ära salvesta käsitsi failisuurust
-
-// Task list
-// 1. Logi decoder refactor + test siinusandmetega
-// 1.5. Log object tagastab logi metadata, kus on lisaks decode infole internal state (kui toimub powerout). Logi konstruktor võtab pointeri metafailile.
-// 2. Ettevalmistused failisüsteemi tulekuks
-// 3. Logi sisukord (iga 10 TS tagant kirje). Kujul timestamp-tema aadress failis(mitmes bait). Optional (kui metafaili ei anta, ei tehta).
-// Hoitakse nii Log objekti väljana kui metafailina (peab säilima pärast powerouti).
-// 4. CRC iga logi entry kohta. Optional. Otsi CRCde kohta - mis on meile parim? Mathias pakub CRC8. Triple buffer???
-// 5. Slicing. Virtuaalsed sliced. Pointer algustimestampile ja pointer lõputimestampile (lähimale järgnevale) failis. Dokumentatsioon!
-// Slice peab inheritima koos Log objektiga sama interface'i, kus on compress f-n ja vb midagi veel. Slice-l peab olema võimalus päris logiks saada (kopeerimine).
-// 6. SliceLog objektil on compress funktsioon. Loetakse antud aegadega piiratud andmed ja siis compressitakse. Kui kasutaja annab faili, kirjutatakse tulemus faili.
-// 7. Kolm logi tüüpi: täiesti random (timestamp + data), somewhat random aga enamasti perioodiline (ts + n * (data + timedelta)), perioodiline (PeriodicLog)
-// 8. Implementeerida päris timestamp koodis
-
 template<template <class> class T, class E> requires Loggable<T,E>
 class Log {
     private:
-        void* obj;
+        void* obj;  ///< Pointer to the BaseLog<E> subclass object of type T<E> that the Log object wraps
     public:
         /**** Constructors ****/
 
-        Log(T<E>* log_obj) {
+        /**
+         * Initialize the Log object from a given BaseLog subclass object
+         */
+        Log(
+            T<E>* log_obj   ///< [in] A BaseLog subclass object that the Log methods will be invoked on
+        ) {
             this->obj = log_obj;
         };
 
         /**** Getters ****/
 
+        /**
+         * Return pointer to the inner BaseLog subclass object
+         */
         void* get_obj() {
             return obj;
         }
 
+        /**
+         * Return the decode info of the log file
+         */
         log_decode_info_t get_decode_info() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_decode_info();
         }
 
+        /**
+         * Return pointer to the log file
+         */
         uint8_t* get_file() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_file();
         }
 
+        /**
+         * Return pointer to the log index file
+         */
         uint8_t* get_indexfile() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_indexfile();
         }
 
+        /**
+         * Return pointer to the log metafile
+         */
         uint8_t* get_metafile() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_metafile();
         }
 
-        // Get size of log file in bytes
+        /**
+         * Return size of log file in bytes
+         */
         uint32_t get_file_size() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_file_size();
         }
 
-        // Get size of log indexfile in bytes
+        /**
+         * Return size of the log index file in bytes
+         */
         uint32_t get_indexfile_size() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_indexfile_size();
@@ -96,46 +111,70 @@ class Log {
 
         /**** Main functionality ****/
 
-        // Write given datapoint with given timestamp to log file
-        void log(E& data, time_t timestamp) {
+        /**
+         * Write given datapoint with given timestamp to log file
+         */
+        void log(
+            E& data,            ///< [in] Datapoint to be logged
+            time_t timestamp    ///< [in] Capturing time of the datapoint
+        ) {
             T<E>* x = static_cast<T<E>*>(this->obj);
             x->log(data, timestamp);
         };
 
-        // Read an array of log entries from the chosen time period
-        LogSlice<T,E> slice(time_t start_ts, time_t end_ts) {
+        /**
+         * Read an array of log entries from the chosen time period
+         */
+        LogSlice<T,E> slice(
+            time_t start_ts,    ///< [in] Starting point of the chosen time period
+            time_t end_ts       ///< [in] Endpoint of the chosen time period
+        ) {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->slice(start_ts, end_ts);
         }
 
-        // Read an array of log entries from the chosen time period
-        // Write resulting log slice into the file new_file
-        LogSlice<T,E> slice(time_t start_ts, time_t end_ts, uint8_t* new_file) {
+        /**
+         * Read an array of log entries from the chosen time period
+         * Write resulting log slice into the file new_file
+         */
+        LogSlice<T,E> slice(
+            time_t start_ts,    ///< [in] Starting point of the chosen time period
+            time_t end_ts,      ///< [in] Endpoint of the chosen time period
+            uint8_t* new_file   ///< [in] File where the log slice is to be written
+        ) {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->slice(start_ts, end_ts, new_file);
         }
 
         /**** Utility functions ****/
 
-        // Write all datapoints in volatile memory to file (valid for everything except SimpleLog)
+        /**
+         * Write all datapoints in volatile memory to file (valid for everything except SimpleLog)
+         */
         void flush() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             x->flush();
         }
 
-        // Get resolution of log timestamps (valid only for RegularLog)
+        /**
+         * Get resolution of log timestamps (valid only for RegularLog)
+         */
         int8_t get_resolution() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->get_resolution();
         }
 
-        // Signify period change in incoming data (valid only for PeriodicLog)
+        /**
+         * Signify period change in incoming data (valid only for PeriodicLog)
+         */
         void period_change() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             return x->period_change();
         }
 
-        // Write current state to metafile (valid for all)
+        /**
+         * Write current log state to metafile (valid for all)
+         */
         void save_meta_info() {
             T<E>* x = static_cast<T<E>*>(this->obj);
             x->save_meta_info();

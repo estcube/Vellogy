@@ -1,17 +1,32 @@
+/**
+ * @file regularlog.hpp
+ *
+ * This file provides the RegularLog class
+ * which is meant to be used in cases where the datapoints logged are not captured periodically
+ * but also not far apart in time
+ */
+
 #ifndef REGULARLOG_H
 #define REGULARLOG_H
 
 #include "baselog.hpp"
 
+/**
+ * Log class for regular data logging (datapoints are not captured periodically but also not far apart in time)
+ *
+ * @tparam T datatype of datapoints held in the log
+ */
 template <class T>
 class RegularLog : public BaseLog<T> {
     protected:
         // Logic
-        time_t entry_timestamp; // Timestamp in the beginning of the last log entry
-        uint8_t data_added; // How many datapoints have been added to the queue under the last timestamp
-        const int8_t resolution; // TS_BASE^resolution is the smallest unit of time that needs to separable
+        time_t entry_timestamp;     ///< Timestamp in the beginning of the last log entry
+        uint8_t data_added;         ///< How many datapoints have been added to the queue under the last timestamp
+        const int8_t resolution;    ///< TS_BASE^resolution is the smallest unit of time that needs to separable
 
-        // Calculate minimum possible size in bytes for the data queue (maximum size of log in bytes)
+        /**
+         * Calculate minimum possible size in bytes for the data queue (maximum size of log entry in bytes)
+         */
         constexpr uint32_t min_queue_size() {
             uint32_t queue_size = 0;
 
@@ -22,8 +37,12 @@ class RegularLog : public BaseLog<T> {
             return queue_size;
         }
 
-        // Round a given timedelta to a multiple of TS_BASE^resolution and divide by TS_BASE^resolution
-        uint16_t scale_timedelta(uint64_t timedelta) {
+        /**
+         * Round a given timedelta to a multiple of TS_BASE^resolution and divide by TS_BASE^resolution
+         */
+        uint16_t scale_timedelta(
+            uint64_t timedelta      ///< [in] Timedelta to be scaled
+        ) {
             // Relative precision: how much less precise is the timedelta we can log compared to the actual timestamp resolution
             // For example, if TS_RESOLUTION is -4 and this->resolution is -2 and timestamp subseconds are in decimal system,
             // then timedeltas actually saved are 100 times less precise than the timestamp type allows
@@ -36,35 +55,47 @@ class RegularLog : public BaseLog<T> {
             return (upper_bound - timedelta < timedelta - lower_bound ? upper_bound : lower_bound) / rel_precision;
         }
 
-        // Write current timestamp in byte form to the data queue
+        /**
+         * Write the timestamp of the last datapoint to the data queue
+         */
         void write_to_queue_timestamp() {
             this->write_to_queue(&(this->entry_timestamp), sizeof(this->entry_timestamp));
         }
 
-        // Write datapoint in byte form to the data queue
-        void write_to_queue_datapoint(T& datapoint) {
+        /**
+         * Write a datapoint to the data queue
+         */
+        void write_to_queue_datapoint(
+            T& datapoint    ///< [in] Datapoint to be written to the queue
+        ) {
             this->write_to_queue(&datapoint, sizeof(datapoint));
         }
 
-        // Write timedelta in byte form to the data queue
+        /**
+         * Write a timedelta value to the data queue
+         */
         void write_to_queue_timedelta(uint8_t timedelta) {
             this->write_to_queue(&timedelta, sizeof(timedelta));
         }
 
-        // Write current data_added in byte form to the data queue
+        /**
+         * Write how many datapoints were added to the last log entry to the data queue
+         */
         void write_to_queue_data_added() {
             this->write_to_queue(&(this->data_added), sizeof(this->data_added));
             this->switch_buffers();
         }
 
-        // Manually close the current entry (write entry to file)
+        /**
+         * End a log entry and write it to file, reset log state
+         */
         void end_entry() {
             this->write_to_queue_data_added();
             // A new entry was written to the log file
             this->entries_added++;
 
             // Create an index entry (write it to indexfile) if enough log entries have been added to the log file
-            if (this->indexfile != NULL && this->entries_added % INDEX_DENSITY == 1) {
+            if (this->indexfile != NULL && this->entries_added % LOG_REGULAR_INDEX_DENSITY == 1) {
                 this->write_to_index(this->entry_timestamp, this->file_size - this->queue_len);
             }
 
@@ -79,8 +110,13 @@ class RegularLog : public BaseLog<T> {
     public:
         /**** Constructors ****/
 
-        // Initialize the log with the given file (no meta- and indexfile)
-        RegularLog(uint8_t* file, int8_t resolution)
+        /**
+         * Initialize the log with the given file (no meta- and indexfile)
+         */
+        RegularLog(
+            uint8_t* file,      ///< [in] Pointer to the file where datapoints will be saved
+            int8_t resolution   ///< [in] Resolution of the timestamps to be saved in the log file
+        )
             : BaseLog<T>(file)
             , entry_timestamp{0}
             , data_added{0}
@@ -101,8 +137,15 @@ class RegularLog : public BaseLog<T> {
             this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
         }
 
-        // Initialize the log (from a metafile) held in file pointed to by the third argument
-        RegularLog(uint8_t* metafile, uint8_t* indexfile, uint8_t* file, int8_t resolution)
+        /**
+         * Initialize the log (from a metafile) held in the file given
+         */
+        RegularLog(
+            uint8_t* metafile,  ///< [in] Pointer to the file where metainfo will be saved
+            uint8_t* indexfile, ///< [in] Pointer to the file where index entries will be saved
+            uint8_t* file,      ///< [in] Pointer to the file where datapoints will be saved
+            int8_t resolution   ///< [in] Resolution of the timestamps to be saved in the log file
+        )
             : BaseLog<T>(metafile, indexfile, file)
             , entry_timestamp{0}
             , data_added{0}
@@ -123,8 +166,13 @@ class RegularLog : public BaseLog<T> {
             this->double_buffer = (uint8_t *)pvPortMalloc(this->min_queue_size());
         }
 
-        // Initialize the log from a log slice
-        RegularLog(LogSlice<RegularLog, T>* slice, uint8_t* new_file)
+        /**
+         * Initialize the log from a log slice
+         */
+        RegularLog(
+            LogSlice<RegularLog, T>* slice,     ///< [in] Log slice containing the data to be copied into the new log
+            uint8_t* new_file                   ///< [in] Pointer to the file where slice contents will be copied
+        )
             : RegularLog<T>(new_file, slice->get_resolution())
         {
             // Copy slice into the file provided
@@ -132,7 +180,9 @@ class RegularLog : public BaseLog<T> {
             this->file_size += slice->get_end_location() - slice->get_start_location();
         }
 
-        // Free allocated buffers on object destruction
+        /**
+         * Free allocated buffers on object destruction
+         */
         ~RegularLog() {
             vPortFree(this->data_queue);
             vPortFree(this->double_buffer);
@@ -140,11 +190,20 @@ class RegularLog : public BaseLog<T> {
 
         /**** Main functionality ****/
 
-        // Log data (implemented differently for different types), attach timestamp in function
-        void log(T& data);
+        /**
+         * Log data, attach timestamp in function
+         */
+        void log(
+            T& data     ///< [in] Datapoint to be logged
+        );
 
-        // Log data with a given timestamp in the file
-        void log(T& data, time_t timestamp) {
+        /**
+         * Log data with a given timestamp in the file
+         */
+        void log(
+            T& data,            ///< [in] Datapoint to be logged
+            time_t timestamp    ///< [in] Capturing time of the datapoint
+        ) {
             bool new_entry = false;
 
             if (!this->entry_timestamp
@@ -181,14 +240,25 @@ class RegularLog : public BaseLog<T> {
             this->data_added++;
         }
 
-        // Read an array of log entries from the chosen time period
-        LogSlice<RegularLog,T> slice(time_t start_ts, time_t end_ts) {
+        /**
+         * Read an array of log entries from the chosen time period
+         */
+        LogSlice<RegularLog,T> slice(
+            time_t start_ts,    ///< [in] Starting point of the chosen time period
+            time_t end_ts       ///< [in] Endpoint of the chosen time period
+        ) {
             return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution);
         }
 
-        // Read an array of log entries from the chosen time period
-        // Write resulting slice into new_file
-        LogSlice<RegularLog,T> slice(time_t start_ts, time_t end_ts, uint8_t* new_file) {
+        /**
+         * Read an array of log entries from the chosen time period
+         * Write resulting slice into new_file
+         */
+        LogSlice<RegularLog,T> slice(
+            time_t start_ts,    ///< [in] Starting point of the chosen time period
+            time_t end_ts,      ///< [in] Endpoint of the chosen time period
+            uint8_t* new_file   ///< [in] File where the log slice is to be written
+        ) {
             return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution, new_file);
         }
 
@@ -197,25 +267,40 @@ class RegularLog : public BaseLog<T> {
 
         /**** Utility functions ****/
 
-        // Write all datapoints in volatile memory to file
+        /**
+         * Write all datapoints in volatile memory to file
+         */
         void flush() {
             this->end_entry();
         }
 
-        // Return resolution of log timestamps
+        /**
+         * Return resolution of log timestamps
+         */
         int8_t get_resolution() {
             return this->resolution;
         }
 
-        // Dummy function to make the common Log interface more general
+        /**
+         * Signify period change in incoming data on user level
+         * Dummy function to make the common Log interface more general
+         */
         void period_change() {
             return;
         }
 
         /**** Static utility functions ****/
 
-        // Find closest log entry whose timestamp is less than or equal to given timestamp, starting from address file + search_location
-        static uint32_t find_log_entry(uint8_t* file, uint8_t datapoint_size, time_t timestamp, uint32_t search_location, bool succeeding) {
+        /**
+         * Find closest log entry whose timestamp is less than or equal to given timestamp, starting from address file + search_location
+         */
+        static uint32_t find_log_entry(
+            uint8_t* file,              ///< [in] Pointer to the log file from where we search the entry
+            uint8_t datapoint_size,     ///< [in] Size of datapoints in the log file in bytes
+            time_t timestamp,           ///< [in] Timestamp to be searched
+            uint32_t search_location,   ///< [in] From which byte in the file does the search start
+            bool succeeding             ///< [in] Do we want the entry containing the timestamp or the entry after it
+        ) {
             uint32_t reading_location = search_location;
 
             bool done = false;
@@ -242,8 +327,14 @@ class RegularLog : public BaseLog<T> {
             return reading_location;
         }
 
-        // Find last logged timestamp in the log file
-        static time_t find_last_timestamp(uint8_t* file, uint32_t file_size, int8_t resolution) {
+        /**
+         * Find last logged timestamp in the log file
+         */
+        static time_t find_last_timestamp(
+            uint8_t* file,          ///< [in] Pointer to the log file
+            uint32_t file_size,     ///< [in] Size of the log file
+            int8_t resolution       ///< [in] Resolution of timestamps in the log file
+        ) {
             uint8_t last_data_added;
             std::memcpy(&last_data_added, file + file_size - sizeof(uint8_t), sizeof(uint8_t));
 
