@@ -11,6 +11,8 @@
 
 #include "baselog.hpp"
 
+namespace Logging {
+
 /**
  * Log class for aperiodic data logging (datapoints are spaced far apart and unevenly in time)
  *
@@ -18,7 +20,7 @@
  */
 template <class T>
 class SimpleLog : public BaseLog<T> {
-    private:
+    protected:
         /**
          * Write the capturing time of a datapoint to the data queue
          */
@@ -48,6 +50,7 @@ class SimpleLog : public BaseLog<T> {
         )
             : BaseLog<T>(file)
         {
+            // If this is a brand new file without previous datapoints, write the mandatory decode info into the beginning of the file
             if (!this->file_size) {
                 log_file_type_t file_type = LOG_SIMPLE;
                 log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
@@ -72,6 +75,7 @@ class SimpleLog : public BaseLog<T> {
         )
             : BaseLog<T>(metafile, indexfile, file)
         {
+            // If this is a brand new file without previous datapoints, write the mandatory decode info into the beginning of the file
             if (!this->file_size) {
                 log_file_type_t file_type = LOG_SIMPLE;
                 log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
@@ -145,7 +149,7 @@ class SimpleLog : public BaseLog<T> {
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts       ///< [in] Endpoint of the chosen time period
         ) {
-            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128);
+            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
         }
 
         /**
@@ -157,7 +161,7 @@ class SimpleLog : public BaseLog<T> {
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written
         ) {
-            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128, new_file);
+            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file);
         }
 
         /**** Utility functions ****/
@@ -193,6 +197,7 @@ class SimpleLog : public BaseLog<T> {
          */
         static uint32_t find_log_entry(
             uint8_t* file,              ///< [in] Pointer to the log file from where we search the entry
+            uint32_t file_size,         ///< [in] Size of the log file from where we search the entry
             uint8_t datapoint_size,     ///< [in] Size of datapoints in the log file in bytes
             time_t timestamp,           ///< [in] Timestamp to be searched
             uint32_t search_location,   ///< [in] From which byte in the file does the search start
@@ -219,17 +224,32 @@ class SimpleLog : public BaseLog<T> {
         }
 
         /**
+         * Find first logged timestamp in the log file
+         */
+        static time_t find_first_timestamp(
+            uint8_t* file,          ///< [in] Pointer to the log file
+            uint32_t file_size,     ///< [in] Size of the log file
+            uint32_t file_break     ///< [in] Break in the log file (separating last logged datapoints from first logged ones)
+        ) {
+            time_t first_ts;
+            std::memcpy(&first_ts, file + LOG_MANDATORY_DECODE_INFO_SIZE, sizeof(time_t));
+            return first_ts;
+        }
+
+        /**
          * Find last logged timestamp in the log file
          */
         static time_t find_last_timestamp(
             uint8_t* file,          ///< [in] Pointer to the log file
-            uint32_t file_size,     ///< [in] Size of the log file
+            uint32_t file_break,    ///< [in] Size of the log file
             int8_t resolution       ///< [in] Resolution of timestamps in the log file
         ) {
             time_t last_ts;
-            std::memcpy(&last_ts, file + file_size - sizeof(T) - sizeof(time_t), sizeof(time_t));
+            std::memcpy(&last_ts, file + file_break - sizeof(T) - sizeof(time_t), sizeof(time_t));
             return last_ts;
         }
 };
+
+}
 
 #endif

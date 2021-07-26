@@ -10,6 +10,8 @@
 
 #include "baselog.hpp"
 
+namespace Logging {
+
 /**
  * Class denoting a valid subset of a log file, called slice
  *
@@ -82,5 +84,7 @@ class LogSlice {
             return Log<T,E>(new_log);
         }
 };
+
+}
 
 #endif

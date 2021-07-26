@@ -6,6 +6,8 @@
 
 #define PI 3.14159265
 
+using namespace Logging;
+
 static void test1() {
     uint8_t file[1024];
     RegularLog<int> logi = RegularLog<int>(file, -3);
@@ -346,8 +348,9 @@ static void test10() {
     log10d.flush();
 
     // Test slicing with resolution reduced 1000 times
-    LogSlice<RegularLog, int> sliced1 = log_slice<RegularLog, int>(file4, log10b.get_file_size(), NULL, 0, 1603720000, 1603930000, 0);  // Expected {2, 261}
-    LogSlice<RegularLog, int> sliced2 = log_slice<RegularLog, int>(file2, log10b.get_file_size(), NULL, 0, 1603723789, 1603723801, 0);  // Expected {2, 261}
+    const int8_t res = 0;
+    LogSlice<RegularLog, int> sliced1 = log_slice<RegularLog, int>(file4, log10b.get_file_size(), NULL, 0, 1603720000, 1603930000, res);  // Expected {2, 261}
+    LogSlice<RegularLog, int> sliced2 = log_slice<RegularLog, int>(file2, log10b.get_file_size(), NULL, 0, 1603723789, 1603723801, res);  // Expected {2, 261}
 }
 
 static void test11() {
@@ -379,16 +382,16 @@ static void test11() {
 
     // Slice that contains the whole file
     LogSlice<RegularLog, int> slice1 = log_slice<RegularLog, int>(file, logi.get_file_size(), NULL, 0, 1603721111, 1610001616, -1);  // Expected {2, 698}
-    LogSlice<RegularLog, int> slice1_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603721111, 1610001616, -3);
+    LogSlice<RegularLog, int> slice1_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603721111, 1610001616, -1);
     // Entries in different log, but same index entries
     LogSlice<RegularLog, int> slice2 = log_slice<RegularLog, int>(file, logi.get_file_size(), NULL, 0, 1603765511, 1603839900, -1);  // Expected {31, 147}
-    LogSlice<RegularLog, int> slice2_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603765511, 1603839900, -3);
+    LogSlice<RegularLog, int> slice2_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603765511, 1603839900, -1);
     // Entries in the same log (and index) entry
     LogSlice<RegularLog, int> slice3 = log_slice<RegularLog, int>(file, logi.get_file_size(), NULL, 0, 1604134487, 1604139555, -1);  // Expected {437, 466}
-    LogSlice<RegularLog, int> slice3_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1604134487, 1604139555, -3);
+    LogSlice<RegularLog, int> slice3_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1604134487, 1604139555, -1);
     // Entries in different index entries
     LogSlice<RegularLog, int> slice4 = log_slice<RegularLog, int>(file, logi.get_file_size(), NULL, 0, 1603736499, 1604254803, -1);  // Expected {2, 611}
-    LogSlice<RegularLog, int> slice4_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603736499, 1604254803, -3);
+    LogSlice<RegularLog, int> slice4_indexed = log_slice<RegularLog, int>(file, logi.get_file_size(), indexfile, 5 * (sizeof(time_t) + sizeof(uint32_t)), 1603736499, 1604254803, -1);
 }
 
 static void test12() {
@@ -420,28 +423,28 @@ static void test12() {
     }
 
     // Test whole file slice
-    LogSlice<SimpleLog, int> slice1 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740000, 1603746400, -3);  // Expected {2, 1202}
-    LogSlice<SimpleLog, int> slice1_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740000, 1603746400, -3);
+    LogSlice<SimpleLog, int> slice1 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740000, 1603746400);  // Expected {2, 1202}
+    LogSlice<SimpleLog, int> slice1_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740000, 1603746400);
     LogSlice<SimpleLog, int> alt1 = log12.slice(1603740000, 1603746400);
     // Test timestamps out of bounds
-    LogSlice<SimpleLog, int> slice2 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603730000, 1603766400, -3);  // Expected {2, 1202}
-    LogSlice<SimpleLog, int> slice2_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603730000, 1603766400, -3);
+    LogSlice<SimpleLog, int> slice2 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603730000, 1603766400);  // Expected {2, 1202}
+    LogSlice<SimpleLog, int> slice2_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603730000, 1603766400);
     LogSlice<SimpleLog, int> alt2 = log12.slice(1603730000, 1603766400);
     // Test random timestamps in different index entries
-    LogSlice<SimpleLog, int> slice3 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740131, 1603744681, -3);  // Expected {26, 890}
-    LogSlice<SimpleLog, int> slice3_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740131, 1603744681, -3);
+    LogSlice<SimpleLog, int> slice3 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740131, 1603744681);  // Expected {26, 890}
+    LogSlice<SimpleLog, int> slice3_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740131, 1603744681);
     LogSlice<SimpleLog, int> alt3 = log12.slice(1603740131, 1603744681);
     // Test exact entry timestamps
-    LogSlice<SimpleLog, int> slice4 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740640, 1603742560, -3);  // Expected {122, 494}
-    LogSlice<SimpleLog, int> slice4_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740640, 1603742560, -3);
+    LogSlice<SimpleLog, int> slice4 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740640, 1603742560);  // Expected {122, 494}
+    LogSlice<SimpleLog, int> slice4_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740640, 1603742560);
     LogSlice<SimpleLog, int> alt4 = log12.slice(1603740640, 1603742560);
     // Test random timestamps in same index entry
-    LogSlice<SimpleLog, int> slice5 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740972, 1603741099, -3);  // Expected {182, 218}
-    LogSlice<SimpleLog, int> slice5_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740972, 1603741099, -3);
+    LogSlice<SimpleLog, int> slice5 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740972, 1603741099);  // Expected {182, 218}
+    LogSlice<SimpleLog, int> slice5_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740972, 1603741099);
     LogSlice<SimpleLog, int> alt5 = log12.slice(1603740972, 1603741099);
     // Test random timestamps in same log entry
-    LogSlice<SimpleLog, int> slice6 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740972, 1603740980, -3);  // Expected {182, 194}
-    LogSlice<SimpleLog, int> slice6_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740972, 1603740980, -3);
+    LogSlice<SimpleLog, int> slice6 = log_slice<SimpleLog, int>(file, logi.get_file_size(), NULL, 0, 1603740972, 1603740980);  // Expected {182, 194}
+    LogSlice<SimpleLog, int> slice6_indexed = log_slice<SimpleLog, int>(file, logi.get_file_size(), indexfile, 240, 1603740972, 1603740980);
     LogSlice<SimpleLog, int> alt6 = log12.slice(1603740972, 1603740980);
 
     uint8_t new_file[512];
@@ -455,7 +458,7 @@ static void test12() {
 
 static void test13() {
     // Test PeriodicLog functionality
-    // NOTE: DATAPOINTS_IN_ENTRY is set to 20
+    // NOTE: LOG_PERIODIC_DATAPOINTS_IN_ENTRY is set to 20
 
     // First without indexfile
     uint8_t file1[1024];
@@ -546,7 +549,7 @@ static void test13() {
 
 static void test14() {
     // Test PeriodicLog slicing functionality
-    // NOTE: DATAPOINTS_IN_ENTRY is set to 20
+    // NOTE: LOG_PERIODIC_DATAPOINTS_IN_ENTRY is set to 20
 
     uint8_t metafile[] = {
         // decode info
@@ -596,32 +599,106 @@ static void test14() {
 
     // Slicing tests
     // Test whole file slice
-    LogSlice<PeriodicLog, int> slice1 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626771009, 1626781280, -3);  // Expected {2, 1338}
-    LogSlice<PeriodicLog, int> slice1_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626771009, 1626781280, -3);
+    LogSlice<PeriodicLog, int> slice1 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626771009, 1626781280);  // Expected {2, 1338}
+    LogSlice<PeriodicLog, int> slice1_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626771009, 1626781280);
     LogSlice<PeriodicLog, int> alt1 = log14.slice(1626771009, 1626781280);
     // Test timestamps out of bounds
-    LogSlice<PeriodicLog, int> slice2 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626770000, 1636779999, -3);  // Expected {2, 1338}
-    LogSlice<PeriodicLog, int> slice2_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626770000, 1636779999, -3);
+    LogSlice<PeriodicLog, int> slice2 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626770000, 1636779999);  // Expected {2, 1338}
+    LogSlice<PeriodicLog, int> slice2_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626770000, 1636779999);
     LogSlice<PeriodicLog, int> alt2 = log14.slice(1626770000, 1636779999);
     // Test random timestamps in different index entries
-    LogSlice<PeriodicLog, int> slice3 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626771549, 1626774355, -3);  // Expected {102, 678}
-    LogSlice<PeriodicLog, int> slice3_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626771549, 1626774355, -3);
+    LogSlice<PeriodicLog, int> slice3 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626771549, 1626774355);  // Expected {102, 678}
+    LogSlice<PeriodicLog, int> slice3_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626771549, 1626774355);
     LogSlice<PeriodicLog, int> alt3 = log14.slice(1626771549, 1626774355);
     // Test exact entry timestamps
-    LogSlice<PeriodicLog, int> slice4 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626773500, 1626779300, -3);  // Expected {502, 1138}
-    LogSlice<PeriodicLog, int> slice4_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626773500, 1626779300, -3);
+    LogSlice<PeriodicLog, int> slice4 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626773500, 1626779300);  // Expected {502, 1138}
+    LogSlice<PeriodicLog, int> slice4_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626773500, 1626779300);
     LogSlice<PeriodicLog, int> alt4 = log14.slice(1626773500, 1626779300);
     // Test random timestamps in same index entry
-    LogSlice<PeriodicLog, int> slice5 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626775962, 1626777003, -3);  // Expected {778, 978}
-    LogSlice<PeriodicLog, int> slice5_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626775962, 1626777003, -3);
+    LogSlice<PeriodicLog, int> slice5 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626775962, 1626777003);  // Expected {778, 978}
+    LogSlice<PeriodicLog, int> slice5_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626775962, 1626777003);
     LogSlice<PeriodicLog, int> alt5 = log14.slice(1626775962, 1626777003);
     // Test random timestamps in same log entry
-    LogSlice<PeriodicLog, int> slice6 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626779511, 1626779857, -3);  // Expected {1138, 1238}
-    LogSlice<PeriodicLog, int> slice6_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626779511, 1626779857, -3);
+    LogSlice<PeriodicLog, int> slice6 = log_slice<PeriodicLog, int>(file, log14.get_file_size(), NULL, 0, 1626779511, 1626779857);  // Expected {1138, 1238}
+    LogSlice<PeriodicLog, int> slice6_indexed = log_slice<PeriodicLog, int>(file, log14.get_file_size(), indexfile, 36, 1626779511, 1626779857);
     LogSlice<PeriodicLog, int> alt6 = log14.slice(1626779511, 1626779857);
 
     uint8_t slice7_file[102];
     LogSlice<PeriodicLog, int> slice7_withfile = log14.slice(1626779511, 1626779857, slice7_file); // Expected {1138, 1238}
+}
+
+static void test15() {
+    // Test (simple) CircularLog functionality
+
+    // First without indexfile
+    uint8_t file1[1024];
+
+    CircularLog<int> logi1 = CircularLog<int>(file1, 5 * (sizeof(time_t) + sizeof(int)) + LOG_MANDATORY_DECODE_INFO_SIZE);
+    Log log15 = Log(&logi1);
+
+    int data1[200];
+    time_t timestamp1 = 1626771000;
+
+    // Expected behaviour: log file holds the last 5 logged datapoints at all times
+    for (uint8_t i = 0; i < 50; i++) {
+        data1[i] = i;
+        log15.log(data1[i], timestamp1);
+        timestamp1 += 100;
+    }
+}
+
+static void test16() {
+    // Test (simple) CircularLog slicing functionality
+
+    uint8_t metafile[] = {
+        // decode info
+        0x00, 0x00, 0x00, 0x10, 0x03, 0x03, 0x03, 0x03, 0x04, 0x04, 0x04, 0x04, 0x05, 0x06, 0x00, 0x00,
+        // file size in bytes
+        0x00, 0x00, 0x00, 0x00,
+        // indexfile size in bytes
+        0x00, 0x00, 0x00, 0x00
+    };
+    uint8_t indexfile[256];
+    uint8_t file[1024];
+
+    CircularLog<int> logi = CircularLog<int>(metafile, indexfile, file, 50 * (sizeof(time_t) + sizeof(int)) + LOG_MANDATORY_DECODE_INFO_SIZE);
+    Log log16 = Log(&logi);
+
+    int data[200];
+    time_t timestamp = 1626771000;
+
+    // Expected behaviour: log file holds the last 50 logged datapoints at all times
+    for (uint8_t i = 0; i < 78; i++) {
+        data[i] = i;
+        log16.log(data[i], timestamp);
+        timestamp += 16;
+    }
+
+    // Slicing tests
+    // Test whole file slice
+    LogSlice<CircularLog, int> slice1 = log_slice<CircularLog, int>(file, log16.get_file_size(), NULL, 0, 1626771450, 1626772238, -128, 338);  // Expected {338, 338}
+    LogSlice<CircularLog, int> slice1_indexed = log_slice<CircularLog, int>(file, log16.get_file_size(), indexfile, 192, 1626771450, 1626772238, -128, 338);
+    LogSlice<CircularLog, int> alt1 = log16.slice(1626771450, 1626772238);
+    // Test timestamps out of bounds
+    LogSlice<CircularLog, int> slice2 = log_slice<CircularLog, int>(file, log16.get_file_size(), NULL, 0, 1626771000, 1636779999, -128, 338);  // Expected {338, 338}
+    LogSlice<CircularLog, int> slice2_indexed = log_slice<CircularLog, int>(file, log16.get_file_size(), indexfile, 192, 1626771000, 1636779999, -128, 338);
+    LogSlice<CircularLog, int> alt2 = log16.slice(1626771000, 1636779999);
+    // // Test random timestamps in different index entries
+    LogSlice<CircularLog, int> slice3 = log_slice<CircularLog, int>(file, log16.get_file_size(), NULL, 0, 1626771508, 1626771990, -128, 338);  // Expected {374, 146}
+    LogSlice<CircularLog, int> slice3_indexed = log_slice<CircularLog, int>(file, log16.get_file_size(), indexfile, 192, 1626771508, 1626771990, -128, 338);
+    LogSlice<CircularLog, int> alt3 = log16.slice(1626771508, 1626771990);
+    // Test exact entry timestamps
+    LogSlice<CircularLog, int> slice4 = log_slice<CircularLog, int>(file, log16.get_file_size(), NULL, 0, 1626771560, 1626771720, -128, 338);  // Expected {422, 554}
+    LogSlice<CircularLog, int> slice4_indexed = log_slice<CircularLog, int>(file, log16.get_file_size(), indexfile, 36, 1626771560, 1626771720, -128, 338);
+    LogSlice<CircularLog, int> alt4 = log16.slice(1626771560, 1626771720);
+    // Test random timestamps in same index entry
+    LogSlice<CircularLog, int> slice5 = log_slice<CircularLog, int>(file, log16.get_file_size(), NULL, 0, 1626771981, 1626772022, -128, 338);  // Expected {134, 170}
+    LogSlice<CircularLog, int> slice5_indexed = log_slice<CircularLog, int>(file, log16.get_file_size(), indexfile, 36, 1626771981, 1626772022, -128, 338);
+    LogSlice<CircularLog, int> alt5 = log16.slice(1626771981, 1626772022);
+    // // Test random timestamps in same log entry
+    LogSlice<CircularLog, int> slice6 = log_slice<CircularLog, int>(file, log16.get_file_size(), NULL, 0, 1626772233, 1626772247, -128, 338);  // Expected {326, 338}
+    LogSlice<CircularLog, int> slice6_indexed = log_slice<CircularLog, int>(file, log16.get_file_size(), indexfile, 36, 1626772233, 1626772247, -128, 338);
+    LogSlice<CircularLog, int> alt6 = log16.slice(1626772233, 1626772247);
 }
 
 int main() {
@@ -639,6 +716,8 @@ int main() {
     test12();
     test13();
     test14();
+    test15();
+    test16();
 
     Success_Handler();
 }

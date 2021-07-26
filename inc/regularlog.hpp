@@ -11,6 +11,8 @@
 
 #include "baselog.hpp"
 
+namespace Logging {
+
 /**
  * Log class for regular data logging (datapoints are not captured periodically but also not far apart in time)
  *
@@ -122,6 +124,7 @@ class RegularLog : public BaseLog<T> {
             , data_added{0}
             , resolution{resolution}
         {
+            // If this is a brand new file without previous datapoints, write the mandatory decode info into the beginning of the file
             if (!this->file_size) {
                 log_file_type_t file_type = LOG_REGULAR;
                 log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
@@ -151,6 +154,7 @@ class RegularLog : public BaseLog<T> {
             , data_added{0}
             , resolution{resolution}
         {
+            // If this is a brand new file without previous datapoints, write the mandatory decode info into the beginning of the file
             if (!this->file_size) {
                 log_file_type_t file_type = LOG_REGULAR;
                 log_data_type_t data_type = LOG_INT32_T; // TODO: non-dummy value
@@ -259,7 +263,7 @@ class RegularLog : public BaseLog<T> {
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written
         ) {
-            return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution, new_file);
+            return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file, this->resolution);
         }
 
         // Log<T> compress(compression_method_t method); // Compress log with the chosen method
@@ -296,6 +300,7 @@ class RegularLog : public BaseLog<T> {
          */
         static uint32_t find_log_entry(
             uint8_t* file,              ///< [in] Pointer to the log file from where we search the entry
+            uint32_t file_size,         ///< [in] Size of the log file from where we search the entry
             uint8_t datapoint_size,     ///< [in] Size of datapoints in the log file in bytes
             time_t timestamp,           ///< [in] Timestamp to be searched
             uint32_t search_location,   ///< [in] From which byte in the file does the search start
@@ -328,27 +333,42 @@ class RegularLog : public BaseLog<T> {
         }
 
         /**
+         * Find first logged timestamp in the log file
+         */
+        static time_t find_first_timestamp(
+            uint8_t* file,          ///< [in] Pointer to the log file
+            uint32_t file_size,     ///< [in] Size of the log file
+            uint32_t file_break     ///< [in] Break in the log file (separating last logged datapoints from first logged ones)
+        ) {
+            time_t first_ts;
+            std::memcpy(&first_ts, file + LOG_MANDATORY_DECODE_INFO_SIZE, sizeof(time_t));
+            return first_ts;
+        }
+
+        /**
          * Find last logged timestamp in the log file
          */
         static time_t find_last_timestamp(
             uint8_t* file,          ///< [in] Pointer to the log file
-            uint32_t file_size,     ///< [in] Size of the log file
+            uint32_t file_break,    ///< [in] Size of the log file
             int8_t resolution       ///< [in] Resolution of timestamps in the log file
         ) {
             uint8_t last_data_added;
-            std::memcpy(&last_data_added, file + file_size - sizeof(uint8_t), sizeof(uint8_t));
+            std::memcpy(&last_data_added, file + file_break - sizeof(uint8_t), sizeof(uint8_t));
 
             uint32_t last_timedelta;
-            std::memcpy(&last_timedelta, file + file_size - 2 * sizeof(uint8_t), sizeof(uint8_t));
+            std::memcpy(&last_timedelta, file + file_break - 2 * sizeof(uint8_t), sizeof(uint8_t));
             // Relative precision of timedelta (see scale_timedelta function for more info)
             uint32_t rel_precision = pow(TS_BASE, abs(resolution - TS_RESOLUTION));
             last_timedelta *= rel_precision;
 
             time_t last_ts;
-            std::memcpy(&last_ts, file + file_size - sizeof(uint8_t) - (last_data_added + 1)*(sizeof(T) + sizeof(uint8_t)) - sizeof(time_t), sizeof(time_t));
+            std::memcpy(&last_ts, file + file_break - sizeof(uint8_t) - (last_data_added + 1)*(sizeof(T) + sizeof(uint8_t)) - sizeof(time_t), sizeof(time_t));
             last_ts += last_timedelta;
             return last_ts;
         }
 };
+
+}
 
 #endif

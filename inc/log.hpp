@@ -26,6 +26,8 @@
 #include "circularlog.hpp"
 #include "logutility.hpp"
 
+namespace Logging {
+
 /**
  * Log common user interface class
  *
@@ -180,5 +182,7 @@ class Log {
             x->save_meta_info();
         }
 };
+
+}
 
 #endif

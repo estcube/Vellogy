@@ -21,13 +21,16 @@
 #include <FreeRTOS.h>
 #include "logging_cfg.h"
 
+namespace Logging {
+
 /**
  * Log file structure types
  */
 enum log_file_type_t : uint8_t {
     LOG_REGULAR = 0,    ///< Corresponds to RegularLog class
     LOG_SIMPLE,         ///< Corresponds to SimpleLog class
-    LOG_PERIODIC        ///< Corresponds to PeriodicLog class
+    LOG_PERIODIC,       ///< Corresponds to PeriodicLog class
+    LOG_CIRCULAR        ///< Corresponds to CircularLog class
 };
 
 /**
@@ -276,5 +279,7 @@ class BaseLog {
             this->serialize_meta_info();
         }
 };
+
+}
 
 #endif
