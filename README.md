@@ -1,0 +1,2 @@
+# eclog
+Logging file structure
