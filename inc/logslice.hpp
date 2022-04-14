@@ -14,80 +14,74 @@
 #include "baselog.hpp"
 
 namespace eclog {
-
 /**
  * Class denoting a valid subset of a log file, called slice
  *
  * @tparam T the type of log held in the file being sliced, a subclass of BaseLog
  * @tparam E the datatype of datapoints held in the log file being sliced
  */
-template <template <class> class T, class E>
+template<template<class> class T, class E>
 class log_slice {
-    private:
-        uint8_t* file;              ///< Log file being sliced
-        uint32_t start_location;    ///< Beginning of slice in the log file
-        uint32_t end_location;      ///< End of slice in the log file
-        int8_t resolution;          ///< Resolution of timestamps in the log file
+  private:
+  uint8_t *file;           ///< Log file being sliced
+  uint32_t start_location; ///< Beginning of slice in the log file
+  uint32_t end_location;   ///< End of slice in the log file
+  int8_t resolution;       ///< Resolution of timestamps in the log file
 
-    public:
-        /**
-         * Create a new log slice
-         */
-        log_slice(
-            uint8_t* file,              ///< [in] Log file being sliced
-            uint32_t start_location,    ///< [in] Beginning of slice in the log file
-            uint32_t end_location,      ///< [in] End of slice in the log file
-            int8_t resolution           ///< [in] Resolution of timestamps in the log file
-        )
-            : file(file)
-            , start_location{start_location}
-            , end_location{end_location}
-            , resolution{resolution}
-        {}
+  public:
 
-        /**
-         * Return the file being sliced
-         */
-        uint8_t* get_file() {
-            return this->file;
-        }
+  /**
+   * Create a new log slice
+   */
+  log_slice(uint8_t *file,   ///< [in] Log file being sliced
+    uint32_t start_location, ///< [in] Beginning of slice in the log file
+    uint32_t end_location,   ///< [in] End of slice in the log file
+    int8_t resolution        ///< [in] Resolution of timestamps in the log file
+  ) : file(file), start_location{start_location}, end_location{end_location}, resolution{resolution}
+  {}
 
-        /**
-         * Return the beginning of the slice
-         */
-        uint32_t get_start_location() {
-            return this->start_location;
-        }
+  /**
+   * Return the file being sliced
+   */
+  uint8_t *get_file() {
+    return this->file;
+  }
 
-        /**
-         * Return the end of the slice
-         */
-        uint32_t get_end_location() {
-            return this->end_location;
-        }
+  /**
+   * Return the beginning of the slice
+   */
+  uint32_t get_start_location() {
+    return this->start_location;
+  }
 
-        /**
-         * Return the resolution of timestamps in the log file
-         */
-        int8_t get_resolution() {
-            return this->resolution;
-        }
+  /**
+   * Return the end of the slice
+   */
+  uint32_t get_end_location() {
+    return this->end_location;
+  }
 
-        /**
-         * Copy the log slice into a new log file and create a Log object of it
-         * NB! User is responsible for deleting the log object inside the log interface object returned by this function
-         */
-        log<T,E> create_log(
-            uint8_t* new_file   ///< [in] File where the log slice will be copied to
-        )  {
-            // Allocate memory for new Log
-            uint8_t* buf = (uint8_t *)pvPortMalloc(sizeof(T<E>));
-            // Copy slice contents into new_file and return the new Log held in new_file
-            T<E>* new_log = new(buf) T<E>(this, new_file);
-            return log<T,E>(new_log);
-        }
+  /**
+   * Return the resolution of timestamps in the log file
+   */
+  int8_t get_resolution() {
+    return this->resolution;
+  }
+
+  /**
+   * Copy the log slice into a new log file and create a Log object of it
+   * NB! User is responsible for deleting the log object inside the log interface object returned by this function
+   */
+  log<T, E> create_log(uint8_t *new_file ///< [in] File where the log slice will be copied to
+  ) {
+    // Allocate memory for new Log
+    uint8_t *buf = (uint8_t *) pvPortMalloc(sizeof(T<E>));
+    // Copy slice contents into new_file and return the new Log held in new_file
+    T<E> *new_log = new(buf) T<E>(this, new_file);
+
+    return log<T, E>(new_log);
+  }
 };
-
 }
 
 #endif
