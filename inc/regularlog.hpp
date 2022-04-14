@@ -1,6 +1,9 @@
 /**
  * @file regularlog.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * This file provides the RegularLog class
  * which is meant to be used in cases where the datapoints logged are not captured periodically
  * but also not far apart in time

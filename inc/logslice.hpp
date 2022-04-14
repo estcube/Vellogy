@@ -1,6 +1,9 @@
 /**
  * @file logutility.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * This file provides the LogSlice class
  * used for addressing datapoints in the log that fall into a specific time interval
  */

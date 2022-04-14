@@ -1,3 +1,9 @@
+/**
+ * @file circularlog.hpp
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ */
+
 #ifndef CIRCULARLOG_H
 #define CIRCULARLOG_H
 

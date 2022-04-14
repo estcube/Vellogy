@@ -1,6 +1,9 @@
 /**
  * @file log.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * Module for data logging on ESTCube-2
  * The module allows to:
  * * Create a log in a given file

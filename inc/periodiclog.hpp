@@ -1,6 +1,9 @@
 /**
  * @file periodiclog.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * This file provides the PeriodicLog class
  * which is meant to be used in cases where the datapoints logged are captured periodically
  */

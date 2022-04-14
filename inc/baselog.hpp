@@ -1,6 +1,9 @@
 /**
  * @file baselog.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * This file provides the base class of all types of logs
  * and common enums and structs for all other log classes
  */

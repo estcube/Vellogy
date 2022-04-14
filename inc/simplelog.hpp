@@ -1,6 +1,9 @@
 /**
  * @file simplelog.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * This file provides the SimpleLog class
  * which is meant to be used in cases where the datapoints logged are not captured periodically
  * and spaced far apart in time (for example, error logging)

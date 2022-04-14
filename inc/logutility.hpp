@@ -1,6 +1,9 @@
 /**
  * @file logutility.hpp
  *
+ * Author: Annika Jaakson
+ * Refactored by: Kerdo Kurs
+ *
  * This file provides some standalone utility functions,
  * for example a function for creating slices from a given log file
  */
