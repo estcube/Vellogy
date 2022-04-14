@@ -10,7 +10,7 @@
 
 #include "baselog.hpp"
 
-namespace Logging {
+namespace eclog {
 
 /**
  * Class denoting a valid subset of a log file, called slice
@@ -19,7 +19,7 @@ namespace Logging {
  * @tparam E the datatype of datapoints held in the log file being sliced
  */
 template <template <class> class T, class E>
-class LogSlice {
+class log_slice {
     private:
         uint8_t* file;              ///< Log file being sliced
         uint32_t start_location;    ///< Beginning of slice in the log file
@@ -30,7 +30,7 @@ class LogSlice {
         /**
          * Create a new log slice
          */
-        LogSlice(
+        log_slice(
             uint8_t* file,              ///< [in] Log file being sliced
             uint32_t start_location,    ///< [in] Beginning of slice in the log file
             uint32_t end_location,      ///< [in] End of slice in the log file
@@ -74,14 +74,14 @@ class LogSlice {
          * Copy the log slice into a new log file and create a Log object of it
          * NB! User is responsible for deleting the log object inside the log interface object returned by this function
          */
-        Log<T,E> createLog(
+        log<T,E> create_log(
             uint8_t* new_file   ///< [in] File where the log slice will be copied to
         )  {
             // Allocate memory for new Log
             uint8_t* buf = (uint8_t *)pvPortMalloc(sizeof(T<E>));
             // Copy slice contents into new_file and return the new Log held in new_file
             T<E>* new_log = new(buf) T<E>(this, new_file);
-            return Log<T,E>(new_log);
+            return log<T,E>(new_log);
         }
 };
 

@@ -11,7 +11,7 @@
 
 #include "baselog.hpp"
 
-namespace Logging {
+namespace eclog {
 
 /**
  * Log class for aperiodic data logging (datapoints are spaced far apart and unevenly in time)
@@ -19,7 +19,7 @@ namespace Logging {
  * @tparam T datatype of datapoints held in the log
  */
 template <class T>
-class SimpleLog : public BaseLog<T> {
+class simple_log : public base_log<T> {
     protected:
         /**
          * Write the capturing time of a datapoint to the data queue
@@ -45,10 +45,10 @@ class SimpleLog : public BaseLog<T> {
         /**
          * Initialize the log with the given file (no meta- and indexfile)
          */
-        SimpleLog(
+        simple_log(
             uint8_t* file   ///< [in] Pointer to the file where datapoints will be saved
         )
-            : BaseLog<T>(file)
+            : base_log<T>(file)
         {
             // If this is a brand new file without previous datapoints, write the mandatory decode info into the beginning of the file
             if (!this->file_size) {
@@ -68,12 +68,12 @@ class SimpleLog : public BaseLog<T> {
         /**
          * Initialize the log (from a metafile) held in the file given
          */
-        SimpleLog(
+        simple_log(
             uint8_t* metafile,  ///< [in] Pointer to the file where metainfo will be saved
             uint8_t* indexfile, ///< [in] Pointer to the file where index entries will be saved
             uint8_t* file       ///< [in] Pointer to the file where datapoints will be saved
         )
-            : BaseLog<T>(metafile, indexfile, file)
+            : base_log<T>(metafile, indexfile, file)
         {
             // If this is a brand new file without previous datapoints, write the mandatory decode info into the beginning of the file
             if (!this->file_size) {
@@ -93,11 +93,11 @@ class SimpleLog : public BaseLog<T> {
         /**
          * Initialize the log from a log slice
          */
-        SimpleLog(
-            LogSlice<SimpleLog, T>* slice,      ///< [in] Log slice containing the data to be copied into the new log
+        simple_log(
+            log_slice<simple_log, T>* slice,      ///< [in] Log slice containing the data to be copied into the new log
             uint8_t* new_file                   ///< [in] Pointer to the file where slice contents will be copied
         )
-            : SimpleLog<T>(new_file)
+            : simple_log<T>(new_file)
         {
             // Copy slice into the file provided
             std::memcpy(this->file + this->file_size, slice->get_file() + slice->get_start_location(), slice->get_end_location() - slice->get_start_location());
@@ -107,7 +107,7 @@ class SimpleLog : public BaseLog<T> {
         /**
          * Free allocated buffers on object destruction
          */
-        ~SimpleLog() {
+        ~simple_log() {
             vPortFree(this->data_queue);
             vPortFree(this->double_buffer);
         }
@@ -145,23 +145,23 @@ class SimpleLog : public BaseLog<T> {
         /**
          * Read an array of log entries from the chosen time period
          */
-        LogSlice<SimpleLog,T> slice(
+        log_slice<simple_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts       ///< [in] Endpoint of the chosen time period
         ) {
-            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
+            return make_log_slice<simple_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
         }
 
         /**
          * Read an array of log entries from the chosen time period
          * Write resulting slice into new_file
          */
-        LogSlice<SimpleLog,T> slice(
+        log_slice<simple_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written
         ) {
-            return log_slice<SimpleLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file);
+            return make_log_slice<simple_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file);
         }
 
         /**** Utility functions ****/

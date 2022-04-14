@@ -10,7 +10,7 @@
 
 #include "baselog.hpp"
 
-namespace Logging {
+namespace eclog {
 
 /**
  * Log class for periodic data logging (datapoints are evenly spaced in time)
@@ -18,7 +18,7 @@ namespace Logging {
  * @tparam T datatype of datapoints held in the log
  */
 template <class T>
-class PeriodicLog : public BaseLog<T> {
+class periodic_log : public base_log<T> {
     protected:
         time_t entry_timestamp;     ///< Timestamp of the first datapoint in the entry
         time_t last_timestamp;      ///< Timestamp of the last datapoint in the entry
@@ -85,10 +85,10 @@ class PeriodicLog : public BaseLog<T> {
         /**
          * Initialize the log with the given file (no meta- and indexfile)
          */
-        PeriodicLog(
+        periodic_log(
             uint8_t* file   ///< [in] Pointer to the file where datapoints will be saved
         )
-            : BaseLog<T>(file)
+            : base_log<T>(file)
             , entry_timestamp{0}
             , last_timestamp{0}
             , data_added{0}
@@ -112,12 +112,12 @@ class PeriodicLog : public BaseLog<T> {
         /**
          * Initialize the log (from a metafile) held in the file given
          */
-        PeriodicLog(
+        periodic_log(
             uint8_t* metafile,  ///< [in] Pointer to the file where metainfo will be saved
             uint8_t* indexfile, ///< [in] Pointer to the file where index entries will be saved
             uint8_t* file       ///< [in] Pointer to the file where datapoints will be saved
         )
-            : BaseLog<T>(metafile, indexfile, file)
+            : base_log<T>(metafile, indexfile, file)
             , entry_timestamp{0}
             , last_timestamp{0}
             , data_added{0}
@@ -141,11 +141,11 @@ class PeriodicLog : public BaseLog<T> {
         /**
          * Initialize the log from a log slice
          */
-        PeriodicLog(
-            LogSlice<PeriodicLog, T>* slice,    ///< [in] Log slice containing the data to be copied into the new log
+        periodic_log(
+            log_slice<periodic_log, T>* slice,    ///< [in] Log slice containing the data to be copied into the new log
             uint8_t* new_file                   ///< [in] Pointer to the file where slice contents will be copied
         )
-            : PeriodicLog<T>(new_file)
+            : periodic_log<T>(new_file)
         {
             // Copy slice into the file provided
             std::memcpy(this->file + this->file_size, slice->get_file() + slice->get_start_location(), slice->get_end_location() - slice->get_start_location());
@@ -155,7 +155,7 @@ class PeriodicLog : public BaseLog<T> {
         /**
          * Free allocated buffers on object destruction
          */
-        ~PeriodicLog() {
+        ~periodic_log() {
             vPortFree(this->data_queue);
             vPortFree(this->double_buffer);
         }
@@ -196,23 +196,23 @@ class PeriodicLog : public BaseLog<T> {
         /**
          * Read an array of log entries from the chosen time period
          */
-        LogSlice<PeriodicLog,T> slice(
+        log_slice<periodic_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts       ///< [in] Endpoint of the chosen time period
         ) {
-            return log_slice<PeriodicLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
+            return make_log_slice<periodic_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts);
         }
 
         /**
          * Read an array of log entries from the chosen time period
          * Write resulting slice into new_file
          */
-        LogSlice<PeriodicLog,T> slice(
+        log_slice<periodic_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written
         ) {
-            return log_slice<PeriodicLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file);
+            return make_log_slice<periodic_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file);
         }
 
         /**** Utility functions ****/

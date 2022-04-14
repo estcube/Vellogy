@@ -10,7 +10,7 @@
 
 #include "log.hpp"
 
-namespace Logging {
+namespace eclog {
 
 typedef uint32_t (*entry_search_fun)(uint8_t*, uint32_t, uint8_t, time_t, uint32_t, bool);
 
@@ -87,7 +87,7 @@ static entry_location_t find_entry_location(
  * @tparam E the datatype of datapoints held in the log
  */
 template <template <class> class T, class E>
-LogSlice<T,E> log_slice(
+log_slice<T,E> make_log_slice(
     uint8_t* file,                      ///< [in] Pointer to the log file where we search the entry
     uint32_t file_size,                 ///< [in] Size of the log file
     uint8_t* indexfile,                 ///< [in] Pointer to the log index file
@@ -118,7 +118,7 @@ LogSlice<T,E> log_slice(
         uint32_t end_location = T<E>::find_log_entry(file, file_size, sizeof(E), end_ts, file_break, true);
         uint32_t start_location = T<E>::find_log_entry(file, file_size, sizeof(E), start_ts, end_location, false);
 
-        return LogSlice<T,E>(file, start_location, end_location, resolution);
+        return log_slice<T,E>(file, start_location, end_location, resolution);
     }
 
     uint32_t index_entries = indexfile_size / LOG_INDEX_ENTRY_SIZE; // Number of index entries
@@ -136,12 +136,12 @@ LogSlice<T,E> log_slice(
         std::memcpy(&search_location, indexfile + second_index * LOG_INDEX_ENTRY_SIZE + sizeof(time_t), sizeof(uint32_t));
         uint32_t end_location = T<E>::find_log_entry(file, file_size, sizeof(E), end_ts, search_location, true);
 
-        return LogSlice<T,E>(file, start.location_in_file, end_location, resolution);
+        return log_slice<T,E>(file, start.location_in_file, end_location, resolution);
     }
 
     entry_location_t end = find_entry_location(file, file_size, file_break, indexfile, indexfile_size, sizeof(E), T<E>::find_log_entry, start.index_in_index, second_index, end_ts, true);
 
-    return LogSlice<T,E>(file, start.location_in_file, end.location_in_file, resolution);
+    return log_slice<T,E>(file, start.location_in_file, end.location_in_file, resolution);
 }
 
 /**
@@ -152,7 +152,7 @@ LogSlice<T,E> log_slice(
  * @tparam E the datatype of datapoints held in the log
  */
 template <template <class> class T, class E>
-LogSlice<T,E> log_slice(
+log_slice<T,E> make_log_slice(
     uint8_t* file,                      ///< [in] Pointer to the log file where we search the entry
     uint32_t file_size,                 ///< [in] Size of the log file
     uint8_t* indexfile,                 ///< [in] Pointer to the log index file
@@ -163,9 +163,9 @@ LogSlice<T,E> log_slice(
     const int8_t resolution = -128,     ///< [in] Resolution of timestamps in the log file
     uint32_t file_break = 0             ///< [in] Where was the last datapoint logged (necessary for CircularLog)
 ) {
-    LogSlice<T,E> slice = log_slice<T,E>(file, file_size, indexfile, indexfile_size, start_ts, end_ts, resolution, file_break);
+    log_slice<T,E> slice = make_log_slice<T,E>(file, file_size, indexfile, indexfile_size, start_ts, end_ts, resolution, file_break);
     // Create a new log and copy slice contents into new_file
-    Log<T,E> new_log = slice.createLog(new_file);
+    log<T,E> new_log = slice.create_log(new_file);
     // Delete the resulting Log object because we don't need it
     vPortFree(new_log.get_obj());
 

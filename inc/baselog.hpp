@@ -21,7 +21,7 @@
 #include <FreeRTOS.h>
 #include "logging_cfg.h"
 
-namespace Logging {
+namespace eclog {
 
 /**
  * Log file structure types
@@ -69,15 +69,15 @@ struct log_decode_info_t {
 };
 
 // Forward declarations of different classes needed for logging
-template <class T> class BaseLog;
-template <class T> class RegularLog;
-template <class T> class SimpleLog;
+template <class T> class base_log;
+template <class T> class regular_log;
+template <class T> class simple_log;
 
 template<template <class> class T, class E>
-concept Loggable = std::is_convertible<T<E>, BaseLog<E>>::value;
+concept loggable = std::is_convertible<T<E>, base_log<E>>::value;
 
-template <template <class> class T, class E> class LogSlice;
-template<template <class> class T, class E> requires Loggable<T,E> class Log;
+template <template <class> class T, class E> class log_slice;
+template<template <class> class T, class E> requires loggable<T,E> class log;
 
 /**
  * A base class for different types of logs
@@ -88,7 +88,7 @@ template<template <class> class T, class E> requires Loggable<T,E> class Log;
  * @tparam T datatype of datapoints held in the log
  */
 template <class T>
-class BaseLog {
+class base_log {
     protected:
         // Files
         log_decode_info_t decode_info;  ///< Log optional decode info
@@ -195,7 +195,7 @@ class BaseLog {
         /**
          * Initialize the log with the given file (no meta- and indexfile)
          */
-        BaseLog(
+        base_log(
             uint8_t* file   ///< [in] Pointer to the file where datapoints will be saved
         )
             : file(file)
@@ -210,7 +210,7 @@ class BaseLog {
         /**
          * Initialize the log (from a metafile) held in the given file
          */
-        BaseLog(
+        base_log(
             uint8_t* metafile,  ///< [in] Pointer to the file where metainfo will be saved
             uint8_t* indexfile, ///< [in] Pointer to the file where index entries will be saved
             uint8_t* file       ///< [in] Pointer to the file where datapoints will be saved

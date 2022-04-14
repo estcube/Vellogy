@@ -11,7 +11,7 @@
 
 #include "baselog.hpp"
 
-namespace Logging {
+namespace eclog {
 
 /**
  * Log class for regular data logging (datapoints are not captured periodically but also not far apart in time)
@@ -19,7 +19,7 @@ namespace Logging {
  * @tparam T datatype of datapoints held in the log
  */
 template <class T>
-class RegularLog : public BaseLog<T> {
+class regular_log : public base_log<T> {
     protected:
         // Logic
         time_t entry_timestamp;     ///< Timestamp in the beginning of the last log entry
@@ -115,11 +115,11 @@ class RegularLog : public BaseLog<T> {
         /**
          * Initialize the log with the given file (no meta- and indexfile)
          */
-        RegularLog(
+        regular_log(
             uint8_t* file,      ///< [in] Pointer to the file where datapoints will be saved
             int8_t resolution   ///< [in] Resolution of the timestamps to be saved in the log file
         )
-            : BaseLog<T>(file)
+            : base_log<T>(file)
             , entry_timestamp{0}
             , data_added{0}
             , resolution{resolution}
@@ -143,13 +143,13 @@ class RegularLog : public BaseLog<T> {
         /**
          * Initialize the log (from a metafile) held in the file given
          */
-        RegularLog(
+        regular_log(
             uint8_t* metafile,  ///< [in] Pointer to the file where metainfo will be saved
             uint8_t* indexfile, ///< [in] Pointer to the file where index entries will be saved
             uint8_t* file,      ///< [in] Pointer to the file where datapoints will be saved
             int8_t resolution   ///< [in] Resolution of the timestamps to be saved in the log file
         )
-            : BaseLog<T>(metafile, indexfile, file)
+            : base_log<T>(metafile, indexfile, file)
             , entry_timestamp{0}
             , data_added{0}
             , resolution{resolution}
@@ -173,11 +173,11 @@ class RegularLog : public BaseLog<T> {
         /**
          * Initialize the log from a log slice
          */
-        RegularLog(
-            LogSlice<RegularLog, T>* slice,     ///< [in] Log slice containing the data to be copied into the new log
+        regular_log(
+            log_slice<regular_log, T>* slice,     ///< [in] Log slice containing the data to be copied into the new log
             uint8_t* new_file                   ///< [in] Pointer to the file where slice contents will be copied
         )
-            : RegularLog<T>(new_file, slice->get_resolution())
+            : regular_log<T>(new_file, slice->get_resolution())
         {
             // Copy slice into the file provided
             std::memcpy(this->file + this->file_size, slice->get_file() + slice->get_start_location(), slice->get_end_location() - slice->get_start_location());
@@ -187,7 +187,7 @@ class RegularLog : public BaseLog<T> {
         /**
          * Free allocated buffers on object destruction
          */
-        ~RegularLog() {
+        ~regular_log() {
             vPortFree(this->data_queue);
             vPortFree(this->double_buffer);
         }
@@ -247,23 +247,23 @@ class RegularLog : public BaseLog<T> {
         /**
          * Read an array of log entries from the chosen time period
          */
-        LogSlice<RegularLog,T> slice(
+        log_slice<regular_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts       ///< [in] Endpoint of the chosen time period
         ) {
-            return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution);
+            return make_log_slice<regular_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, this->resolution);
         }
 
         /**
          * Read an array of log entries from the chosen time period
          * Write resulting slice into new_file
          */
-        LogSlice<RegularLog,T> slice(
+        log_slice<regular_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written
         ) {
-            return log_slice<RegularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file, this->resolution);
+            return make_log_slice<regular_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file, this->resolution);
         }
 
         // Log<T> compress(compression_method_t method); // Compress log with the chosen method

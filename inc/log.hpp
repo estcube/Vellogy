@@ -26,7 +26,7 @@
 #include "circularlog.hpp"
 #include "logutility.hpp"
 
-namespace Logging {
+namespace eclog {
 
 /**
  * Log common user interface class
@@ -38,8 +38,8 @@ namespace Logging {
  * @tparam T a subclass of BaseLog on which all the functions are actually called (determines the inner log file structure)
  * @tparam E the type of data held in the log
  */
-template<template <class> class T, class E> requires Loggable<T,E>
-class Log {
+template<template <class> class T, class E> requires loggable<T,E>
+class log {
     private:
         void* obj;  ///< Pointer to the BaseLog<E> subclass object of type T<E> that the Log object wraps
     public:
@@ -48,7 +48,7 @@ class Log {
         /**
          * Initialize the Log object from a given BaseLog subclass object
          */
-        Log(
+        log(
             T<E>* log_obj   ///< [in] A BaseLog subclass object that the Log methods will be invoked on
         ) {
             this->obj = log_obj;
@@ -116,7 +116,7 @@ class Log {
         /**
          * Write given datapoint with given timestamp to log file
          */
-        void log(
+        void write(
             E& data,            ///< [in] Datapoint to be logged
             time_t timestamp    ///< [in] Capturing time of the datapoint
         ) {
@@ -127,7 +127,7 @@ class Log {
         /**
          * Read an array of log entries from the chosen time period
          */
-        LogSlice<T,E> slice(
+        log_slice<T,E> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts       ///< [in] Endpoint of the chosen time period
         ) {
@@ -139,7 +139,7 @@ class Log {
          * Read an array of log entries from the chosen time period
          * Write resulting log slice into the file new_file
          */
-        LogSlice<T,E> slice(
+        log_slice<T,E> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written

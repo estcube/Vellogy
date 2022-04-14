@@ -3,10 +3,10 @@
 
 #include "simplelog.hpp"
 
-namespace Logging {
+namespace eclog {
 
 template <class T>
-class CircularLog : public SimpleLog<T> {
+class circular_log : public simple_log<T> {
     private:
         uint32_t file_capacity;
         uint32_t file_break;
@@ -52,11 +52,11 @@ class CircularLog : public SimpleLog<T> {
         /**
          * Initialize the log with the given file (no meta- and indexfile)
          */
-        CircularLog(
+        circular_log(
             uint8_t* file,          ///< [in] Pointer to the file where datapoints will be saved
             uint32_t file_capacity  ///< [in] Maximum capacity of the log file
         )
-            : SimpleLog<T>(file)
+            : simple_log<T>(file)
         {
             // If the file capacity provided is not divisible by the size of the log entry, reduce it until it is
             uint8_t excessive_space = (file_capacity - LOG_MANDATORY_DECODE_INFO_SIZE) % (sizeof(time_t) + sizeof(T));
@@ -82,13 +82,13 @@ class CircularLog : public SimpleLog<T> {
         /**
          * Initialize the log (from a metafile) held in the file given
          */
-        CircularLog(
+        circular_log(
             uint8_t* metafile,      ///< [in] Pointer to the file where metainfo will be saved
             uint8_t* indexfile,     ///< [in] Pointer to the file where index entries will be saved
             uint8_t* file,          ///< [in] Pointer to the file where datapoints will be saved
             uint32_t file_capacity  ///< [in] Maximum capacity of the log file
         )
-            : SimpleLog<T>(metafile, indexfile, file)
+            : simple_log<T>(metafile, indexfile, file)
         {
             // If the file capacity provided is not divisible by the size of the log entry, reduce it until it is
             uint8_t excessive_space = (file_capacity - LOG_MANDATORY_DECODE_INFO_SIZE) % (sizeof(time_t) + sizeof(T));
@@ -145,23 +145,23 @@ class CircularLog : public SimpleLog<T> {
         /**
          * Read an array of log entries from the chosen time period
          */
-        LogSlice<CircularLog,T> slice(
+        log_slice<circular_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts       ///< [in] Endpoint of the chosen time period
         ) {
-            return log_slice<CircularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128, this->file_break);
+            return make_log_slice<circular_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, -128, this->file_break);
         }
 
         /**
          * Read an array of log entries from the chosen time period
          * Write resulting slice into new_file
          */
-        LogSlice<CircularLog,T> slice(
+        log_slice<circular_log,T> slice(
             time_t start_ts,    ///< [in] Starting point of the chosen time period
             time_t end_ts,      ///< [in] Endpoint of the chosen time period
             uint8_t* new_file   ///< [in] File where the log slice is to be written
         ) {
-            return log_slice<CircularLog,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file, -128, this->file_break);
+            return make_log_slice<circular_log,T>(this->file, this->file_size, this->indexfile, this->indexfile_size, start_ts, end_ts, new_file, -128, this->file_break);
         }
 
         /**** Static utility functions ****/
